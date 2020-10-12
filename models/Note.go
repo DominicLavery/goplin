@@ -5,6 +5,7 @@ type Note struct {
 	NotebookId string
 	Name       string
 	Body       string
+	Path       string
 }
 
 func ByNotebookId(notes []Note, notebookId string) []Note {
