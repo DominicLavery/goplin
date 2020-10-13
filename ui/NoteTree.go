@@ -32,4 +32,3 @@ func MakeNotesTree(notes []models.Note, updateNoteView func(models.Note)) (*tvie
 	table.SetTitle("Notes")
 	return table, updateNoteTree
 }
-
