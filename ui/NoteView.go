@@ -29,6 +29,7 @@ func MakeNoteView(app *tview.Application) (*tview.TextView, func(models.Note)) {
 		result := markdown.Render(string(source), 80, 1, markdown.WithImageDithering(markdown.DitheringWithChars))
 		w := tview.ANSIWriter(noteView)
 		fmt.Fprintf(w, "%s", result)
+		noteView.ScrollToBeginning()
 	}
 	return noteView, updateNoteView
 }
