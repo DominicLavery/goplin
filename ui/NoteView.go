@@ -3,8 +3,8 @@ package ui
 import (
 	"dominiclavery/goplin/models"
 	"fmt"
-	markdown "github.com/MichaelMure/go-term-markdown"
-	"github.com/rivo/tview"
+	"github.com/MichaelMure/go-term-markdown"
+	"github.com/derailed/tview"
 	"io/ioutil"
 	"log"
 )
@@ -16,7 +16,6 @@ func MakeNoteView(app *tview.Application) (*tview.TextView, func(models.Note)) {
 		SetChangedFunc(func() {
 			app.Draw()
 		})
-
 	noteView.SetBorder(true).SetTitle("Note")
 	updateNoteView := func(note models.Note) {
 		noteView.Clear()
@@ -25,9 +24,8 @@ func MakeNoteView(app *tview.Application) (*tview.TextView, func(models.Note)) {
 			source = []byte("Something went wrong, that file couldn't be opened")
 			log.Println("Error during file reading file:", note.Path, "\nError:", err)
 		}
-
 		result := markdown.Render(string(source), 80, 1, markdown.WithImageDithering(markdown.DitheringWithChars))
-		w := tview.ANSIWriter(noteView)
+		w := tview.ANSIWriter(noteView, "white", "black")
 		fmt.Fprintf(w, "%s", result)
 		noteView.ScrollToBeginning()
 	}

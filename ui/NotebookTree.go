@@ -3,7 +3,7 @@ package ui
 import (
 	"dominiclavery/goplin/models"
 	"github.com/gdamore/tcell"
-	"github.com/rivo/tview"
+	"github.com/derailed/tview"
 )
 
 func makeTreeNode(book models.Notebook) *tview.TreeNode {

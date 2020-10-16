@@ -2,7 +2,7 @@ package ui
 
 import (
 	"dominiclavery/goplin/models"
-	"github.com/rivo/tview"
+	"github.com/derailed/tview"
 )
 
 func MakeNotesTree(notes []models.Note, updateNoteView func(models.Note)) (*tview.Table, func([]models.Note)) {
