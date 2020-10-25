@@ -1,15 +1,15 @@
 package ui
 
 import (
+	"dominiclavery/goplin/data"
 	"dominiclavery/goplin/models"
 	"fmt"
 	"github.com/MichaelMure/go-term-markdown"
 	"github.com/derailed/tview"
 	"io/ioutil"
-	"log"
 )
 
-func MakeNoteView(app *tview.Application) (*tview.TextView, func(models.Note)) {
+func MakeNoteView(app *tview.Application, source data.Source) *tview.TextView {
 	noteView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
@@ -17,17 +17,17 @@ func MakeNoteView(app *tview.Application) (*tview.TextView, func(models.Note)) {
 			app.Draw()
 		})
 	noteView.SetBorder(true).SetTitle("Note")
-	updateNoteView := func(note models.Note) {
+	source.Note(func(note models.Note) {
 		noteView.Clear()
-		source, err := ioutil.ReadFile(note.Path)
-		if err != nil {
-			source = []byte("Something went wrong, that file couldn't be opened")
-			log.Println("Error during file reading file:", note.Path, "\nError:", err)
+		var buf []byte
+		var err error
+		if buf, err = ioutil.ReadAll(note.Body); err != nil {
+			buf = []byte("Something went wrong, that file couldn't be opened")
 		}
-		result := markdown.Render(string(source), 80, 1, markdown.WithImageDithering(markdown.DitheringWithChars))
+		result := markdown.Render(string(buf), 80, 1, markdown.WithImageDithering(markdown.DitheringWithChars))
 		w := tview.ANSIWriter(noteView, "white", "black")
 		fmt.Fprintf(w, "%s", result)
 		noteView.ScrollToBeginning()
-	}
-	return noteView, updateNoteView
+	})
+	return noteView
 }
