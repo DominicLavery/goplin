@@ -1,14 +1,16 @@
 package models
 
+import "io"
+
 type Note struct {
-	Id         string
-	NotebookId string
+	Id         int
+	NotebookId int
 	Name       string
-	Body       string
+	Body       io.Reader
 	Path       string
 }
 
-func ByNotebookId(notes []Note, notebookId string) []Note {
+func ByNotebookId(notes []Note, notebookId int) []Note {
 	filtered := make([]Note, 0)
 	for _, note := range notes {
 		if note.NotebookId == notebookId {
