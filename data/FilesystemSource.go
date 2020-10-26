@@ -27,7 +27,7 @@ func NewFilesystemSource(root string) *FilesystemSource {
 	notebookCount := 0
 	noteCount := 0
 	walkFunction := func(path string, info os.FileInfo, err error) error {
-		if err != nil { //TODO handle me?
+		if err != nil {
 			return err
 		}
 
@@ -50,14 +50,21 @@ func NewFilesystemSource(root string) *FilesystemSource {
 		}
 		return nil
 	}
-	filepath.Walk(root, walkFunction) //TODO handle error
+	if err := filepath.Walk(root, walkFunction); err != nil {
+		log.Println("Could not walk the file path", err)
+		notebooks.Name = "Couldn't read the directory, more info in the logs"
+	}
 	return &FilesystemSource{rootPath: root, notebooks: notebooks, notes: notes, highestNotebookId: notebookCount, highestNoteId: noteCount}
 }
 
 func (b *FilesystemSource) MakeBook(path string) {
 	absPath, _ := filepath.Abs(path)
 	parent := parentByPath(path, &b.notebooks)
-	_ = os.Mkdir(absPath, os.ModePerm) //TODO
+	log.Println("")
+	if err := os.Mkdir(absPath, os.ModePerm); err != nil {
+		// TODO console log
+		log.Println("Unable to create dir", err)
+	}
 	_, dir := filepath.Split(path)
 	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: b.highestNotebookId, ParentId: parent.Id})
 	b.highestNotebookId++
@@ -67,7 +74,7 @@ func (b *FilesystemSource) MakeBook(path string) {
 func (b *FilesystemSource) OpenNote(id int) {
 	if b.currentFile != nil {
 		if err := b.currentFile.Close(); err != nil {
-			log.Fatal("We couldn't close the read file!") // TODO more user friendly handling
+			log.Println("Couldn't close the read file!")
 		}
 		b.currentFile = nil
 	}

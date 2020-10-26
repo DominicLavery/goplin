@@ -6,6 +6,7 @@ import (
 	"github.com/derailed/tview"
 	"github.com/gdamore/tcell"
 	"github.com/spf13/cobra"
+	"log"
 
 	"encoding/csv"
 	"strings"
@@ -24,8 +25,9 @@ func (c CmdLine) finishedFunc(key tcell.Key) {
 
 		r := csv.NewReader(strings.NewReader(command))
 		r.Comma = ' '
-		record, err := r.Read() //TODO Why might this error?
+		record, err := r.Read()
 		if err != nil {
+			log.Println("Unexpected issue reading a command", err)
 			_ = c.rootCmd.Help() // Roots Help() can't return an error
 		}
 		c.rootCmd.SetArgs(record)

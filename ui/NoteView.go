@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelMure/go-term-markdown"
 	"github.com/derailed/tview"
 	"io/ioutil"
+	"log"
 )
 
 func MakeNoteView(app *tview.Application, source data.Source) *tview.TextView {
@@ -23,6 +24,7 @@ func MakeNoteView(app *tview.Application, source data.Source) *tview.TextView {
 		var err error
 		if buf, err = ioutil.ReadAll(note.Body); err != nil {
 			buf = []byte("Something went wrong, that file couldn't be opened")
+			log.Println("Couldn't read a note", err)
 		}
 		result := markdown.Render(string(buf), 80, 1, markdown.WithImageDithering(markdown.DitheringWithChars))
 		w := tview.ANSIWriter(noteView, "white", "black")
