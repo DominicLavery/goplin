@@ -3,6 +3,7 @@ package data
 import (
 	"dominiclavery/goplin/logs"
 	"dominiclavery/goplin/models"
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ type FilesystemSource struct {
 	highestNotebookId      int
 	highestNoteId          int
 	rootPath               string
+	openBookId             int
 	currentFile            *os.File
 }
 
@@ -40,7 +42,7 @@ func NewFilesystemSource(root string) *FilesystemSource {
 			} else {
 				relPath, _ := filepath.Rel(root, path)
 				parent, _ := parentByPath(relPath, &notebooks)
-				parent.Children = append(parent.Children, models.Notebook{Name: info.Name(), Id: notebookCount, ParentId: parent.Id})
+				parent.Children = append(parent.Children, models.Notebook{Name: info.Name(), Id: notebookCount, ParentId: parent.Id, Path: path})
 			}
 			notebookCount++
 		} else if strings.HasSuffix(info.Name(), ".md") {
@@ -71,6 +73,27 @@ func (b *FilesystemSource) MakeBook(path string) error {
 	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: b.highestNotebookId, ParentId: parent.Id})
 	b.highestNotebookId++
 	b.notebooksUpdateHandler(b.notebooks)
+	return nil
+}
+
+func (b *FilesystemSource) MakeNote(name string) error {
+	notebook := notebookById(b.openBookId, &b.notebooks)
+	notes := notesByNotebookId(b.notes, notebook.Id)
+	for _, note := range notes {
+		if note.Name == name+".md" {
+			return errors.New("There is already a note named " + name)
+		}
+	}
+
+	path := notebook.Path + "/" + name + ".md"
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	b.highestNoteId++
+	b.notes = append(b.notes, models.Note{Name: name + ".md", Id: b.highestNoteId, NotebookId: notebook.Id, Path: path})
+	_ = file.Close()
+	b.OpenBook(notebook.Id)
 	return nil
 }
 
@@ -115,7 +138,8 @@ func (b *FilesystemSource) Note(noteCallback func(models.Note)) {
 }
 
 func (b *FilesystemSource) OpenBook(id int) {
+	b.openBookId = id
 	if b.notesUpdateHandler != nil {
-		b.notesUpdateHandler(models.ByNotebookId(b.notes, id))
+		b.notesUpdateHandler(notesByNotebookId(b.notes, id))
 	}
 }

@@ -31,7 +31,7 @@ func MakeNoteView(app *tview.Application, source data.Source) *tview.TextView {
 		w := tview.ANSIWriter(noteView, "white", "black")
 
 		if _, err = fmt.Fprintf(w, "%s", result); err != nil {
-			logs.TeeLog("Error displaying the note", err)	
+			logs.TeeLog("Error displaying the note", err)
 		}
 		noteView.ScrollToBeginning()
 	})

@@ -30,3 +30,26 @@ Options:
 			return source.MakeBook(args[0])
 		}}
 }
+
+func NewMakeNoteCommand(source data.Source) *cobra.Command {
+	helpText := `
+Usage: makenote NAME
+  Creates a new note at the currently selected
+  notebook with the given name
+
+  Quotes can be used to create notes with spaces 
+  in the path. For example: "New Note"
+
+Options:
+  [None]
+`
+	return &cobra.Command{
+		Use:     "makeNote name",
+		Args:    cobra.MinimumNArgs(1),
+		Aliases: []string{"mknote", "mkn", "makenote"},
+		Short:   "Creates a new note",
+		Long:    strings.TrimSpace(helpText),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return source.MakeNote(args[0])
+		}}
+}

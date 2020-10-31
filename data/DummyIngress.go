@@ -3,6 +3,7 @@ package data
 import (
 	"dominiclavery/goplin/models"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -13,6 +14,8 @@ type DummySource struct {
 	notesUpdateHandler     func([]models.Note)
 	noteUpdateHandler      func(models.Note)
 	highestNotebookId      int
+	highestNoteId          int
+	openBookId             int
 }
 
 const dummyText = `
@@ -48,6 +51,7 @@ func NewDummySource() *DummySource {
 			{Id: 5, NotebookId: 5, Name: "subbooking"},
 		},
 		highestNotebookId: 6,
+		highestNoteId:     5,
 	}
 }
 
@@ -68,8 +72,9 @@ func (b *DummySource) Note(noteCallback func(models.Note)) {
 
 func (b *DummySource) OpenBook(id int) {
 	if b.notesUpdateHandler != nil {
-		b.notesUpdateHandler(models.ByNotebookId(b.notes, id))
+		b.notesUpdateHandler(notesByNotebookId(b.notes, id))
 	}
+	b.openBookId = id
 }
 
 func (b *DummySource) OpenNote(id int) {
@@ -93,19 +98,32 @@ func (b *DummySource) MakeBook(path string) error {
 		notebook = models.Notebook{Id: b.highestNotebookId, ParentId: parent.Id, Name: path}
 	} else {
 		var err error
-		parent, err = parentByPath(path, &b.notebooks)
-		if err != nil {
+		if parent, err = parentByPath(path, &b.notebooks); err != nil {
 			return err
 		}
 		pathParts := strings.Split(path, "/")
 		notebook = models.Notebook{Id: b.highestNotebookId, ParentId: parent.Id, Name: pathParts[len(pathParts)-1]}
 	}
 
-	if byName(notebook.Name, &parent.Children) != nil {
+	if notebookByName(notebook.Name, &parent.Children) != nil {
 		return errors.New("A notebook by this name already exists")
 	}
 
 	parent.Children = append(parent.Children, notebook)
 	b.notebooksUpdateHandler(b.notebooks)
+	return nil
+}
+
+func (b *DummySource) MakeNote(name string) error {
+	notes := notesByNotebookId(b.notes, b.openBookId)
+	for _, note := range notes {
+		if note.Name == name {
+			return errors.New(fmt.Sprintf("There is already a book called %s in this notebook", name))
+		}
+	}
+	b.highestNoteId++
+	newNote := models.Note{Id: b.highestNoteId, NotebookId: b.openBookId, Name: name}
+	b.notes = append(b.notes, newNote)
+	b.notesUpdateHandler(notesByNotebookId(b.notes, b.openBookId))
 	return nil
 }
