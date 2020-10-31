@@ -1,6 +1,7 @@
 package data
 
 import (
+	"dominiclavery/goplin/logs"
 	"dominiclavery/goplin/models"
 	"log"
 	"os"
@@ -38,37 +39,39 @@ func NewFilesystemSource(root string) *FilesystemSource {
 				notebooks.Name = info.Name()
 			} else {
 				relPath, _ := filepath.Rel(root, path)
-				parent := parentByPath(relPath, &notebooks)
+				parent, _ := parentByPath(relPath, &notebooks)
 				parent.Children = append(parent.Children, models.Notebook{Name: info.Name(), Id: notebookCount, ParentId: parent.Id})
 			}
 			notebookCount++
 		} else if strings.HasSuffix(info.Name(), ".md") {
 			relPath, _ := filepath.Rel(root, path)
-			parent := parentByPath(relPath, &notebooks)
+			parent, _ := parentByPath(relPath, &notebooks)
 			notes = append(notes, models.Note{Name: info.Name(), Id: noteCount, NotebookId: parent.Id, Path: path})
 			noteCount++
 		}
 		return nil
 	}
 	if err := filepath.Walk(root, walkFunction); err != nil {
-		log.Println("Could not walk the file path", err)
-		notebooks.Name = "Couldn't read the directory, more info in the logs"
+		logs.TeeLog("Could not read notebooks", err)
+		notebooks.Name = "Error"
 	}
 	return &FilesystemSource{rootPath: root, notebooks: notebooks, notes: notes, highestNotebookId: notebookCount, highestNoteId: noteCount}
 }
 
-func (b *FilesystemSource) MakeBook(path string) {
+func (b *FilesystemSource) MakeBook(path string) error {
 	absPath, _ := filepath.Abs(path)
-	parent := parentByPath(path, &b.notebooks)
-	log.Println("")
+	parent, err := parentByPath(path, &b.notebooks)
+	if err != nil {
+		return err
+	}
 	if err := os.Mkdir(absPath, os.ModePerm); err != nil {
-		// TODO console log
-		log.Println("Unable to create dir", err)
+		return err
 	}
 	_, dir := filepath.Split(path)
 	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: b.highestNotebookId, ParentId: parent.Id})
 	b.highestNotebookId++
 	b.notebooksUpdateHandler(b.notebooks)
+	return nil
 }
 
 func (b *FilesystemSource) OpenNote(id int) {
@@ -84,7 +87,8 @@ func (b *FilesystemSource) OpenNote(id int) {
 				var file *os.File
 				var err error
 				if file, err = os.Open(note.Path); err != nil {
-					note.Body = strings.NewReader("Couldn't open the file")
+					logs.TeeLog("Couldn't open the note", err)
+					note.Body = strings.NewReader("Error!")
 				} else {
 					note.Body = file
 					b.currentFile = file

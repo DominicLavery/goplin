@@ -2,6 +2,7 @@ package data
 
 import (
 	"dominiclavery/goplin/models"
+	"errors"
 	"strings"
 )
 
@@ -11,20 +12,20 @@ type Source interface {
 	Note(noteCallback func(models.Note))
 	OpenBook(id int)
 	OpenNote(id int)
-	MakeBook(path string)
+	MakeBook(path string) error
 }
 
-func parentByPath(path string, notebooks *models.Notebook) *models.Notebook {
+func parentByPath(path string, notebooks *models.Notebook) (*models.Notebook, error) {
 	pathParts := strings.Split(path, "/")
 	pathParts = pathParts[:len(pathParts)-1] // remove the name
 	parent := notebooks
 	for _, part := range pathParts {
 		parent = byName(part, &parent.Children)
 		if parent == nil {
-			panic(part + " not found") //todo not found
+			return nil, errors.New(part + "not found")
 		}
 	}
-	return parent
+	return parent, nil
 }
 
 func byName(name string, notebooks *[]models.Notebook) *models.Notebook {

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"dominiclavery/goplin/data"
+	"dominiclavery/goplin/logs"
 	"dominiclavery/goplin/models"
 	"fmt"
 	"github.com/MichaelMure/go-term-markdown"
@@ -28,7 +29,10 @@ func MakeNoteView(app *tview.Application, source data.Source) *tview.TextView {
 		}
 		result := markdown.Render(string(buf), 80, 1, markdown.WithImageDithering(markdown.DitheringWithChars))
 		w := tview.ANSIWriter(noteView, "white", "black")
-		fmt.Fprintf(w, "%s", result)
+
+		if _, err = fmt.Fprintf(w, "%s", result); err != nil {
+			logs.TeeLog("Error displaying the note", err)	
+		}
 		noteView.ScrollToBeginning()
 	})
 	return noteView

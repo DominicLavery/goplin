@@ -2,6 +2,7 @@ package data
 
 import (
 	"dominiclavery/goplin/models"
+	"errors"
 	"strings"
 )
 
@@ -82,7 +83,7 @@ func (b *DummySource) OpenNote(id int) {
 	}
 }
 
-func (b *DummySource) MakeBook(path string) {
+func (b *DummySource) MakeBook(path string) error {
 	b.highestNotebookId++
 	var parent *models.Notebook
 	var notebook models.Notebook
@@ -91,16 +92,20 @@ func (b *DummySource) MakeBook(path string) {
 		parent = &b.notebooks
 		notebook = models.Notebook{Id: b.highestNotebookId, ParentId: parent.Id, Name: path}
 	} else {
-		parent = parentByPath(path, &b.notebooks)
+		var err error
+		parent, err = parentByPath(path, &b.notebooks)
+		if err != nil {
+			return err
+		}
 		pathParts := strings.Split(path, "/")
 		notebook = models.Notebook{Id: b.highestNotebookId, ParentId: parent.Id, Name: pathParts[len(pathParts)-1]}
 	}
 
 	if byName(notebook.Name, &parent.Children) != nil {
-		//TODO duplicate error
-		return
+		return errors.New("A notebook by this name already exists")
 	}
 
 	parent.Children = append(parent.Children, notebook)
 	b.notebooksUpdateHandler(b.notebooks)
+	return nil
 }

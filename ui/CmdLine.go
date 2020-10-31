@@ -3,6 +3,7 @@ package ui
 import (
 	"dominiclavery/goplin/commands"
 	"dominiclavery/goplin/data"
+	"dominiclavery/goplin/logs"
 	"github.com/derailed/tview"
 	"github.com/gdamore/tcell"
 	"github.com/spf13/cobra"
@@ -39,7 +40,10 @@ func (c CmdLine) finishedFunc(key tcell.Key) {
 func MakeCmdLine(source data.Source) *CmdLine {
 	cmdLine := CmdLine{InputField: tview.NewInputField(), source: source}
 	cmdLine.SetFieldBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
-	cmdLine.rootCmd = &cobra.Command{Use: "goplin"}
+	cmdLine.rootCmd = &cobra.Command{}
+	cmdLine.rootCmd.SetOut(logs.ConsoleView)
+	cmdLine.rootCmd.SetErr(logs.ConsoleView)
+
 	mkbookCommand := commands.NewMakeBookCommand(source)
 	cmdLine.rootCmd.AddCommand(mkbookCommand)
 	cmdLine.InputField.SetFinishedFunc(func(key tcell.Key) { cmdLine.finishedFunc(key) })
