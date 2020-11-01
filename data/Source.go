@@ -30,28 +30,26 @@ func parentByPath(path string, notebooks *models.Notebook) (*models.Notebook, er
 }
 
 func notebookByName(name string, notebooks *[]models.Notebook) *models.Notebook {
-	var found *models.Notebook
 	for i, book := range *notebooks {
 		if name == book.Name {
-			found = &(*notebooks)[i] // Book is a copy, get the pointer. //TODO Has to be something better for this
-			break
+			return &(*notebooks)[i] // Book is a copy, get the pointer. //TODO Has to be something better for this
 		}
 	}
-	return found
+	return nil
 }
 
 func notebookById(id int, notebooks *models.Notebook) *models.Notebook {
 	var found *models.Notebook
 	if id == notebooks.Id {
 		return notebooks
-	} else if notebooks.Children != nil && len(notebooks.Children) > 0 {
-		for _, book := range notebooks.Children {
-			found = notebookById(id, &book)
-			if found != nil {
-				return found
-			}
+	}
+	for _, book := range notebooks.Children {
+		found = notebookById(id, &book)
+		if found != nil {
+			return found
 		}
 	}
+
 	return found
 }
 
@@ -63,4 +61,13 @@ func notesByNotebookId(notes []models.Note, notebookId int) []models.Note {
 		}
 	}
 	return filtered
+}
+
+func noteById(notes *[]models.Note, id int) *models.Note {
+	for _, note := range *notes {
+		if note.Id == id {
+			return &note
+		}
+	}
+	return nil
 }

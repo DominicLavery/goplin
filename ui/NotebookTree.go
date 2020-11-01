@@ -16,9 +16,7 @@ func makeTreeNode(book models.Notebook) *tview.TreeNode {
 func add(notebooks []models.Notebook, target *tview.TreeNode) {
 	for _, book := range notebooks {
 		node := makeTreeNode(book)
-		if book.Children != nil && len(book.Children) > 0 {
-			add(book.Children, node)
-		}
+		add(book.Children, node)
 		node.SetExpanded(false)
 		target.AddChild(node)
 	}

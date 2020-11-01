@@ -36,18 +36,18 @@ func NewFilesystemSource(root string) *FilesystemSource {
 
 		if info.IsDir() && info.Name()[0:1] == "." {
 			return filepath.SkipDir
+		}
+
+		relPath, _ := filepath.Rel(root, path)
+		parent, _ := parentByPath(relPath, &notebooks)
+		if path == root {
+			notebooks.Name = info.Name()
+			notebooks.Path = path
 		} else if info.IsDir() {
-			if path == root {
-				notebooks.Name = info.Name()
-			} else {
-				relPath, _ := filepath.Rel(root, path)
-				parent, _ := parentByPath(relPath, &notebooks)
-				parent.Children = append(parent.Children, models.Notebook{Name: info.Name(), Id: notebookCount, ParentId: parent.Id, Path: path})
-			}
+			notebook := models.Notebook{Name: info.Name(), Id: notebookCount, ParentId: parent.Id, Path: path}
+			parent.Children = append(parent.Children, notebook)
 			notebookCount++
 		} else if strings.HasSuffix(info.Name(), ".md") {
-			relPath, _ := filepath.Rel(root, path)
-			parent, _ := parentByPath(relPath, &notebooks)
 			notes = append(notes, models.Note{Name: info.Name(), Id: noteCount, NotebookId: parent.Id, Path: path})
 			noteCount++
 		}
@@ -105,20 +105,17 @@ func (b *FilesystemSource) OpenNote(id int) {
 		b.currentFile = nil
 	}
 	if b.noteUpdateHandler != nil {
-		for _, note := range b.notes {
-			if note.Id == id {
-				var file *os.File
-				var err error
-				if file, err = os.Open(note.Path); err != nil {
-					logs.TeeLog("Couldn't open the note", err)
-					note.Body = strings.NewReader("Error!")
-				} else {
-					note.Body = file
-					b.currentFile = file
-				}
-				b.noteUpdateHandler(note)
-			}
+		note := noteById(&b.notes, id)
+		var file *os.File
+		var err error
+		if file, err = os.Open(note.Path); err != nil {
+			logs.TeeLog("Couldn't open the note", err)
+			note.Body = strings.NewReader("Error!")
+		} else {
+			note.Body = file
+			b.currentFile = file
 		}
+		b.noteUpdateHandler(*note)
 	}
 }
 
@@ -134,7 +131,10 @@ func (b *FilesystemSource) Notes(noteCallback func([]models.Note)) {
 
 func (b *FilesystemSource) Note(noteCallback func(models.Note)) {
 	b.noteUpdateHandler = noteCallback
-	b.OpenNote(0)
+	notes := notesByNotebookId(b.notes, b.openBookId)
+	if len(notes) > 0 {
+		b.OpenNote(notes[0].Id)
+	}
 }
 
 func (b *FilesystemSource) OpenBook(id int) {
