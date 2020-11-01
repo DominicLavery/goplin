@@ -4,7 +4,6 @@ import (
 	"dominiclavery/goplin/logs"
 	"dominiclavery/goplin/models"
 	"errors"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +19,6 @@ type FilesystemSource struct {
 	highestNoteId          int
 	rootPath               string
 	openBookId             int
-	currentFile            *os.File
 }
 
 func NewFilesystemSource(root string) *FilesystemSource {
@@ -98,12 +96,6 @@ func (b *FilesystemSource) MakeNote(name string) error {
 }
 
 func (b *FilesystemSource) OpenNote(id int) {
-	if b.currentFile != nil {
-		if err := b.currentFile.Close(); err != nil {
-			log.Println("Couldn't close the read file!")
-		}
-		b.currentFile = nil
-	}
 	if b.noteUpdateHandler != nil {
 		note := noteById(&b.notes, id)
 		var file *os.File
@@ -113,7 +105,7 @@ func (b *FilesystemSource) OpenNote(id int) {
 			note.Body = strings.NewReader("Error!")
 		} else {
 			note.Body = file
-			b.currentFile = file
+			defer file.Close()
 		}
 		b.noteUpdateHandler(*note)
 	}
