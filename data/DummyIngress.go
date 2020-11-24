@@ -72,7 +72,7 @@ func (b *DummySource) Note(noteCallback func(models.Note)) {
 
 func (b *DummySource) OpenBook(id int) {
 	if b.notesUpdateHandler != nil {
-		b.notesUpdateHandler(notesByNotebookId(b.notes, id))
+		b.notesUpdateHandler(notesByNotebookId(id))
 	}
 	b.openBookId = id
 }
@@ -115,7 +115,7 @@ func (b *DummySource) MakeBook(path string) error {
 }
 
 func (b *DummySource) MakeNote(name string) error {
-	notes := notesByNotebookId(b.notes, b.openBookId)
+	notes := notesByNotebookId(b.openBookId)
 	for _, note := range notes {
 		if note.Name == name {
 			return errors.New(fmt.Sprintf("There is already a book called %s in this notebook", name))
@@ -124,6 +124,6 @@ func (b *DummySource) MakeNote(name string) error {
 	b.highestNoteId++
 	newNote := models.Note{Id: b.highestNoteId, NotebookId: b.openBookId, Name: name}
 	b.notes = append(b.notes, newNote)
-	b.notesUpdateHandler(notesByNotebookId(b.notes, b.openBookId))
+	b.notesUpdateHandler(notesByNotebookId(b.openBookId))
 	return nil
 }

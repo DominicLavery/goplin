@@ -7,6 +7,10 @@ import (
 	"github.com/gdamore/tcell"
 )
 
+type NotebookTree struct {
+	*tview.TreeView
+}
+
 func makeTreeNode(book models.Notebook) *tview.TreeNode {
 	return tview.NewTreeNode(book.Name).
 		SetReference(book.Id).
@@ -55,28 +59,28 @@ func applyExpand(expanded []int, nodes []*tview.TreeNode) {
 	}
 }
 
-func MakeNotebookView(source data.Source) *tview.TreeView {
-	notebookTree := tview.NewTreeView()
+func (nt *NotebookTree) SetNotebook(notebook models.Notebook) {
+	var notebookRoot *tview.TreeNode
+	notebookRoot = makeTreeNode(notebook).
+		SetExpanded(true).
+		SetColor(tcell.ColorRed)
+	add(notebook.Children, notebookRoot)
+	notebookRoot.SetExpanded(true)
+	if nt.GetRoot() != nil {
+		expanded := findExpanded(nt.GetRoot().GetChildren())
+		applyExpand(expanded, notebookRoot.GetChildren())
+	}
+	nt.SetRoot(notebookRoot).
+		SetCurrentNode(notebookRoot)
+}
 
-	source.Notebooks(func(notebook models.Notebook) {
-		var notebookRoot *tview.TreeNode
-		notebookRoot = makeTreeNode(notebook).
-			SetExpanded(true).
-			SetColor(tcell.ColorRed)
-		add(notebook.Children, notebookRoot)
-		notebookRoot.SetExpanded(true)
-		if notebookTree.GetRoot() != nil {
-			expanded := findExpanded(notebookTree.GetRoot().GetChildren())
-			applyExpand(expanded, notebookRoot.GetChildren())
-		}
-		notebookTree.SetRoot(notebookRoot).
-			SetCurrentNode(notebookRoot)
-	})
+func MakeNotebookView() *NotebookTree {
+	notebookTree := NotebookTree{tview.NewTreeView()}
 
 	notebookTree.
 		SetChangedFunc(func(node *tview.TreeNode) {
 			reference := node.GetReference()
-			source.OpenBook(reference.(int))
+			data.OpenNotebooksChan <- reference.(int)
 		}).
 		SetSelectedFunc(func(node *tview.TreeNode) {
 			reference := node.GetReference()
@@ -88,6 +92,7 @@ func MakeNotebookView(source data.Source) *tview.TreeView {
 				node.SetExpanded(!node.IsExpanded())
 			}
 		})
+
 	notebookTree.SetBorder(true).SetTitle("Notebooks")
-	return notebookTree
+	return &notebookTree
 }

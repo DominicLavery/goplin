@@ -26,9 +26,10 @@ Options:
 		Aliases: []string{"mkbook", "mkb", "makebook"},
 		Short:   "Creates a new notebook",
 		Long:    strings.TrimSpace(helpText),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return source.MakeBook(args[0])
-		}}
+		//RunE: func(cmd *cobra.Command, args []string) error {
+		//	return source.MakeBook(args[0])
+		//}
+	}
 }
 
 func NewMakeNoteCommand(source data.Source) *cobra.Command {
@@ -49,7 +50,8 @@ Options:
 		Aliases: []string{"mknote", "mkn", "makenote"},
 		Short:   "Creates a new note",
 		Long:    strings.TrimSpace(helpText),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return source.MakeNote(args[0])
-		}}
+		//RunE: func(cmd *cobra.Command, args []string) error {
+		//	return source.MakeNote(args[0])
+		//}
+	}
 }

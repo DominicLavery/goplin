@@ -9,9 +9,9 @@ import (
 
 // Enum for screens & focus
 const (
-	NotebookTree = iota
-	NoteTree
-	NoteView
+	NotebookTreePos = iota
+	NoteTreePos
+	NoteViewPos
 )
 
 func MakeApp(source data.Source) *tview.Application {
@@ -20,9 +20,9 @@ func MakeApp(source data.Source) *tview.Application {
 	displayConsole := true
 
 	app := tview.NewApplication()
-	noteView := MakeNoteView(app, source)
+	noteView := MakeNoteView(app)
 	notesTree := MakeNotesTree(source)
-	notebookTree := MakeNotebookView(source)
+	notebookTree := MakeNotebookView()
 	cmdLine := MakeCmdLine(source)
 	consoleView := logs.SetApp(app)
 
@@ -42,9 +42,9 @@ func MakeApp(source data.Source) *tview.Application {
 		cmdFlex.Clear()
 
 		flex.AddItem(viewFlex.
-			AddItem(notebookTree, 0, 1, focusedView == NotebookTree).
-			AddItem(notesTree, 0, 1, focusedView == NoteTree).
-			AddItem(noteView, 0, 2, focusedView == NoteView), // Twice as big
+			AddItem(notebookTree, 0, 1, focusedView == NotebookTreePos).
+			AddItem(notesTree, 0, 1, focusedView == NoteTreePos).
+			AddItem(noteView, 0, 2, focusedView == NoteViewPos), // Twice as big
 			0, 1, !cmdMode)
 
 		cmdFlexSize := 1
@@ -88,5 +88,18 @@ func MakeApp(source data.Source) *tview.Application {
 		return event
 	}).SetRoot(flex, true)
 
+	go func() {
+		data.OpenNotebooksChan <- 0
+		for {
+			select {
+			case notebooks := <-data.NotebooksChan:
+				notebookTree.SetNotebook(notebooks)
+			case notes := <-data.NotesChan:
+				notesTree.SetNotes(notes)
+			case note := <-data.NoteChan:
+				noteView.SetNote(note)
+			}
+		}
+	}()
 	return app
 }
