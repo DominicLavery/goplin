@@ -4,16 +4,40 @@ import (
 	"dominiclavery/goplin/models"
 	"errors"
 	"strings"
+	"sync"
 )
 
+var notebooks = Notebooks{
+	notebookRoot: models.Notebook{Id: 0, ParentId: -1},
+	mu:           sync.Mutex{},
+}
+
+var notes = Notes{
+	notes: nil,
+	mu:    sync.Mutex{},
+}
+
+var NotebooksChan = make(chan models.Notebook)
+var NotesChan = make(chan []models.Note)
+var NoteChan = make(chan models.Note)
+
+var OpenNoteChan = make(chan int)
+var OpenNotebooksChan = make(chan int)
+
 type Source interface {
-	Notebooks(notebookCallback func(models.Notebook))
-	Notes(noteCallback func([]models.Note))
-	Note(noteCallback func(models.Note))
+	NotebookReader
+	NotebookWriter
+}
+
+type NotebookReader interface {
 	OpenBook(id int)
 	OpenNote(id int)
-	MakeBook(path string) error
-	MakeNote(name string) error
+	OpenBooks()
+}
+
+type NotebookWriter interface {
+	MakeBook(path string) (models.Notebook, error)
+	MakeNote(name string) (models.Note, error)
 }
 
 func parentByPath(path string, notebooks *models.Notebook) (*models.Notebook, error) {
@@ -53,9 +77,9 @@ func notebookById(id int, notebooks *models.Notebook) *models.Notebook {
 	return found
 }
 
-func notesByNotebookId(notes []models.Note, notebookId int) []models.Note {
+func notesByNotebookId(notebookId int) []models.Note {
 	filtered := make([]models.Note, 0)
-	for _, note := range notes {
+	for _, note := range notes.notes {
 		if note.NotebookId == notebookId {
 			filtered = append(filtered, note)
 		}

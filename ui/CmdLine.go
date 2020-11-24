@@ -14,7 +14,7 @@ import (
 )
 
 type CmdLine struct {
-	source  data.Source
+	source  data.NotebookWriter
 	rootCmd *cobra.Command
 	*tview.InputField
 }
