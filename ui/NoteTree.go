@@ -8,7 +8,6 @@ import (
 
 type NotesTree struct {
 	*tview.Table
-	source data.NotebookReader
 }
 
 func (nt *NotesTree) SetNotes(notes []models.Note) {
@@ -22,10 +21,10 @@ func (nt *NotesTree) SetNotes(notes []models.Note) {
 	}
 }
 
-func MakeNotesTree(source data.NotebookReader) *NotesTree {
+func MakeNotesTree() *NotesTree {
 	table := NotesTree{Table: tview.NewTable().
 		SetBorders(false).
-		SetSelectable(true, false), source: source}
+		SetSelectable(true, false)}
 
 	table.SetSelectionChangedFunc(func(row int, column int) {
 		cell := table.GetCell(row, column)

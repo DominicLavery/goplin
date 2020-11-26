@@ -38,7 +38,7 @@ func (c CmdLine) finishedFunc(key tcell.Key) {
 }
 
 func MakeCmdLine(source data.Source) *CmdLine {
-	cmdLine := CmdLine{InputField: tview.NewInputField(), source: source}
+	cmdLine := CmdLine{InputField: tview.NewInputField()}
 	cmdLine.SetFieldBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
 	cmdLine.rootCmd = &cobra.Command{}
 	cmdLine.rootCmd.SetOut(logs.ConsoleView)
@@ -46,7 +46,7 @@ func MakeCmdLine(source data.Source) *CmdLine {
 
 	mkbookCommand := commands.NewMakeBookCommand(source)
 	cmdLine.rootCmd.AddCommand(mkbookCommand)
-	mknoteCommand := commands.NewMakeNoteCommand(source)
+	mknoteCommand := commands.NewMakeNoteCommand()
 	cmdLine.rootCmd.AddCommand(mknoteCommand)
 	cmdLine.InputField.SetFinishedFunc(func(key tcell.Key) { cmdLine.finishedFunc(key) })
 	return &cmdLine

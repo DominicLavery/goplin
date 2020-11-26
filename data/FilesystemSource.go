@@ -81,25 +81,23 @@ func (b *FilesystemReader) walkFn(path string, info os.FileInfo, err error) erro
 	return nil
 }
 
-func (b *FilesystemWriter) MakeBook(path string) (models.Notebook, error) {
-	var notebook models.Notebook
-	//absPath, _ := filepath.Abs(path)
-	//parent, err := parentByPath(path, &b.notebooks.notebookRoot)
-	//if err != nil {
-	//	return notebook, err
-	//}
-	//if err := os.Mkdir(absPath, os.ModePerm); err != nil {
-	//	return notebook, err
-	//}
-	//_, dir := filepath.Split(path)
-	//parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: b.notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath})
-	//b.notebooks.highestNotebookId++
-	//b.notebooksUpdateHandler(b.notebooks.notebookRoot)
-	return notebook, nil
+func (b *FilesystemWriter) MakeBook(path string) error {
+	absPath, _ := filepath.Abs(path)
+	parent, err := parentByPath(path, &notebooks.notebookRoot)
+	if err != nil {
+		return err
+	}
+	if err := os.Mkdir(absPath, os.ModePerm); err != nil {
+		return err
+	}
+	_, dir := filepath.Split(path)
+	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath})
+	notebooks.highestNotebookId++
+	NotebooksChan <- notebooks.notebookRoot
+	return nil
 }
 
-func (b *FilesystemWriter) MakeNote(name string) (models.Note, error) {
-	var note models.Note
+func (b *FilesystemWriter) MakeNote(name string) error {
 	//notebook := notebookById(b.notes.openBookId, &b.notebooks.notebookRoot)
 	//notes := notesByNotebookId(b.notes.notes, notebook.Id)
 	//for _, note := range notes {
@@ -117,7 +115,7 @@ func (b *FilesystemWriter) MakeNote(name string) (models.Note, error) {
 	//b.notes.notes = append(b.notes.notes, models.Note{Name: name + ".md", Id: b.notes.highestNoteId, NotebookId: notebook.Id, Path: path})
 	//_ = file.Close()
 	//b.OpenBook(notebook.Id)
-	return note, nil
+	return nil
 }
 
 func (b *FilesystemReader) OpenNote(id int) {
