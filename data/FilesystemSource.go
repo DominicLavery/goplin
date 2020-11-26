@@ -3,6 +3,7 @@ package data
 import (
 	"dominiclavery/goplin/logs"
 	"dominiclavery/goplin/models"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -98,23 +99,24 @@ func (b *FilesystemWriter) MakeBook(path string) error {
 }
 
 func (b *FilesystemWriter) MakeNote(name string) error {
-	//notebook := notebookById(b.notes.openBookId, &b.notebooks.notebookRoot)
-	//notes := notesByNotebookId(b.notes.notes, notebook.Id)
-	//for _, note := range notes {
-	//	if note.Name == name+".md" {
-	//		return errors.New("There is already a note named " + name)
-	//	}
-	//}
-	//
-	//path := notebook.Path + "/" + name + ".md"
-	//file, err := os.Create(path)
-	//if err != nil {
-	//	return err
-	//}
-	//b.notes.highestNoteId++
-	//b.notes.notes = append(b.notes.notes, models.Note{Name: name + ".md", Id: b.notes.highestNoteId, NotebookId: notebook.Id, Path: path})
-	//_ = file.Close()
-	//b.OpenBook(notebook.Id)
+	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
+	booksNotes := notesByNotebookId(notebook.Id)
+	for _, note := range booksNotes {
+		if note.Name == name+".md" {
+			return errors.New("There is already a note named " + name)
+		}
+	}
+
+	path := notebook.Path + "/" + name + ".md"
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	notes.highestNoteId++
+	note := models.Note{Name: name + ".md", Id: notes.highestNoteId, NotebookId: notebook.Id, Path: path}
+	notes.notes = append(notes.notes, note)
+	_ = file.Close()
+	NotesChan <- append(booksNotes, note)
 	return nil
 }
 

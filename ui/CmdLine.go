@@ -46,7 +46,7 @@ func MakeCmdLine(source data.Source) *CmdLine {
 
 	mkbookCommand := commands.NewMakeBookCommand(source)
 	cmdLine.rootCmd.AddCommand(mkbookCommand)
-	mknoteCommand := commands.NewMakeNoteCommand()
+	mknoteCommand := commands.NewMakeNoteCommand(source)
 	cmdLine.rootCmd.AddCommand(mknoteCommand)
 	cmdLine.InputField.SetFinishedFunc(func(key tcell.Key) { cmdLine.finishedFunc(key) })
 	return &cmdLine
