@@ -32,7 +32,7 @@ Options:
 	}
 }
 
-func NewMakeNoteCommand() *cobra.Command {
+func NewMakeNoteCommand(source data.Source) *cobra.Command {
 	helpText := `
 Usage: makenote NAME
   Creates a new note at the currently selected
@@ -50,8 +50,8 @@ Options:
 		Aliases: []string{"mknote", "mkn", "makenote"},
 		Short:   "Creates a new note",
 		Long:    strings.TrimSpace(helpText),
-		//RunE: func(cmd *cobra.Command, args []string) error {
-		//	return source.MakeNote(args[0])
-		//}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return source.MakeNote(args[0])
+		},
 	}
 }
