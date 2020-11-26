@@ -36,8 +36,8 @@ type NotebookReader interface {
 }
 
 type NotebookWriter interface {
-	MakeBook(path string) (models.Notebook, error)
-	MakeNote(name string) (models.Note, error)
+	MakeBook(path string) error
+	MakeNote(name string) error
 }
 
 func parentByPath(path string, notebooks *models.Notebook) (*models.Notebook, error) {

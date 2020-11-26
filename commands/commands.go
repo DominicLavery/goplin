@@ -26,13 +26,13 @@ Options:
 		Aliases: []string{"mkbook", "mkb", "makebook"},
 		Short:   "Creates a new notebook",
 		Long:    strings.TrimSpace(helpText),
-		//RunE: func(cmd *cobra.Command, args []string) error {
-		//	return source.MakeBook(args[0])
-		//}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return source.MakeBook(args[0])
+		},
 	}
 }
 
-func NewMakeNoteCommand(source data.Source) *cobra.Command {
+func NewMakeNoteCommand() *cobra.Command {
 	helpText := `
 Usage: makenote NAME
   Creates a new note at the currently selected

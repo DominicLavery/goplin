@@ -21,7 +21,7 @@ func MakeApp(source data.Source) *tview.Application {
 
 	app := tview.NewApplication()
 	noteView := MakeNoteView(app)
-	notesTree := MakeNotesTree(source)
+	notesTree := MakeNotesTree()
 	notebookTree := MakeNotebookView()
 	cmdLine := MakeCmdLine(source)
 	consoleView := logs.SetApp(app)
