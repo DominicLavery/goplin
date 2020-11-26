@@ -92,7 +92,7 @@ func (b *FilesystemWriter) MakeBook(path string) error {
 		return err
 	}
 	_, dir := filepath.Split(path)
-	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath})
+	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath}) // TODO make relPath
 	notebooks.highestNotebookId++
 	NotebooksChan <- notebooks.notebookRoot
 	return nil
