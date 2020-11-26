@@ -19,7 +19,7 @@ func main() {
 		if os.Args[1] != "devmode" {
 			log.Fatal("Unknown command", os.Args[1])
 		}
-		//fileSource = data.NewDummySource()
+		fileSource = data.NewDummySource()
 	} else {
 		fileSource = data.NewFilesystemSource(path)
 	}
