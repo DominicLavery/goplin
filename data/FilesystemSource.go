@@ -4,6 +4,7 @@ import (
 	"dominiclavery/goplin/logs"
 	"dominiclavery/goplin/models"
 	"errors"
+	"github.com/spf13/afero"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,25 +18,34 @@ type FilesystemSource struct {
 
 type FilesystemReader struct {
 	rootPath string
+	fs       *afero.Afero
 }
 
 type FilesystemWriter struct {
 	rootPath string
+	fs       *afero.Afero
 }
 
 func NewFilesystemSource(root string) *FilesystemSource {
+	return newFilesystemSource(root, afero.NewOsFs())
+}
+
+func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
+	afs := &afero.Afero{Fs: fs}
 	reader := &FilesystemReader{
 		rootPath: root,
+		fs:       afs,
 	}
-	if err := filepath.Walk(root, reader.walkFn); err != nil {
+	if err := afs.Walk(root, reader.walkFn); err != nil {
 		logs.TeeLog("Could not read notebooks", err)
 		notebooks.notebookRoot.Name = "Error"
 	}
 
-	fs := &FilesystemSource{
+	filesource := &FilesystemSource{
 		NotebookReader: reader,
 		NotebookWriter: &FilesystemWriter{
 			rootPath: root,
+			fs:       afs,
 		},
 	}
 
@@ -43,17 +53,17 @@ func NewFilesystemSource(root string) *FilesystemSource {
 		for {
 			select {
 			case id := <-OpenNoteChan:
-				fs.OpenNote(id)
+				filesource.OpenNote(id)
 			case id := <-OpenNotebooksChan:
 				if id == 0 {
-					fs.OpenBooks()
+					filesource.OpenBooks()
 				} else {
-					fs.OpenBook(id)
+					filesource.OpenBook(id)
 				}
 			}
 		}
 	}()
-	return fs
+	return filesource
 }
 
 func (b *FilesystemReader) walkFn(path string, info os.FileInfo, err error) error {
@@ -88,12 +98,12 @@ func (b *FilesystemWriter) MakeBook(path string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.Mkdir(absPath, os.ModePerm); err != nil {
+	if err := b.fs.Mkdir(absPath, os.ModePerm); err != nil {
 		return err
 	}
 	_, dir := filepath.Split(path)
-	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath}) // TODO make relPath
 	notebooks.highestNotebookId++
+	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath}) // TODO make relPath
 	NotebooksChan <- notebooks.notebookRoot
 	return nil
 }
@@ -108,7 +118,7 @@ func (b *FilesystemWriter) MakeNote(name string) error {
 	}
 
 	path := notebook.Path + "/" + name + ".md"
-	file, err := os.Create(path)
+	file, err := b.fs.Create(path)
 	if err != nil {
 		return err
 	}
@@ -128,9 +138,9 @@ func (b *FilesystemReader) OpenNote(id int) {
 	}
 
 	note := noteById(&notes.notes, id)
-	var file *os.File
+	var file afero.File
 	var err error
-	if file, err = os.Open(note.Path); err != nil {
+	if file, err = b.fs.Open(note.Path); err != nil {
 		logs.TeeLog("Couldn't open the note", err)
 		note.Body = strings.NewReader("Error!")
 	} else {
