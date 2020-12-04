@@ -28,9 +28,10 @@ const dummyText = `
 `
 
 func NewDummySource() *DummySource {
+	writer := &DummyWriter{}
 	fs := &DummySource{
 		NotebookReader: &DummyReader{},
-		NotebookWriter: &DummyWriter{},
+		NotebookWriter: writer,
 	}
 
 	notebooks = Notebooks{
@@ -71,6 +72,12 @@ func NewDummySource() *DummySource {
 				} else {
 					fs.OpenBook(id)
 				}
+			case path := <-makeBookChan:
+				err := writer.makeBook(path)
+				makeBookErrorChan <- err
+			case name := <-makeNoteChan:
+				err := writer.makeNote(name)
+				makeNoteErrorChan <- err
 			}
 		}
 	}()
@@ -98,6 +105,18 @@ func (b *DummyReader) OpenNote(id int) {
 }
 
 func (b *DummyWriter) MakeBook(path string) error {
+	//Offload to the source goroutine
+	makeBookChan <- path
+	return <-makeBookErrorChan
+}
+
+func (b *DummyWriter) MakeNote(name string) error {
+	//Offload to the source goroutine
+	makeNoteChan <- name
+	return <-makeNoteErrorChan
+}
+
+func (b *DummyWriter) makeBook(path string) error {
 	parent, err := parentByPath(path, &notebooks.notebookRoot)
 	if err != nil {
 		return err
@@ -109,7 +128,7 @@ func (b *DummyWriter) MakeBook(path string) error {
 	return nil
 }
 
-func (b *DummyWriter) MakeNote(name string) error {
+func (b *DummyWriter) makeNote(name string) error {
 
 	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
 	booksNotes := notesByNotebookId(notebook.Id)

@@ -20,7 +20,7 @@ func MakeApp(source data.Source) *tview.Application {
 	displayConsole := true
 
 	app := tview.NewApplication()
-	noteView := MakeNoteView(app)
+	noteView := MakeNoteView()
 	notesTree := MakeNotesTree()
 	notebookTree := MakeNotebookView()
 	cmdLine := MakeCmdLine(source)
@@ -93,11 +93,23 @@ func MakeApp(source data.Source) *tview.Application {
 		for {
 			select {
 			case notebooks := <-data.NotebooksChan:
-				notebookTree.SetNotebook(notebooks)
+				go func() {
+					app.QueueUpdateDraw(func() {
+						notebookTree.SetNotebook(notebooks)
+					})
+				}()
 			case notes := <-data.NotesChan:
-				notesTree.SetNotes(notes)
+				go func() {
+					app.QueueUpdateDraw(func() {
+						notesTree.SetNotes(notes)
+					})
+				}()
 			case note := <-data.NoteChan:
-				noteView.SetNote(note)
+				go func() {
+					app.QueueUpdateDraw(func() {
+						noteView.SetNote(note)
+					})
+				}()
 			}
 		}
 	}()

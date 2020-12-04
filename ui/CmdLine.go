@@ -19,7 +19,7 @@ type CmdLine struct {
 	*tview.InputField
 }
 
-func (c CmdLine) finishedFunc(key tcell.Key) {
+func (c *CmdLine) finishedFunc(key tcell.Key) {
 	if key == tcell.KeyEnter {
 		command := c.GetText()
 		command = strings.TrimLeft(command, ":")
@@ -52,7 +52,7 @@ func MakeCmdLine(source data.Source) *CmdLine {
 	return &cmdLine
 }
 
-func (c CmdLine) SetFinishedFunc(handler func(key tcell.Key)) {
+func (c *CmdLine) SetFinishedFunc(handler func(key tcell.Key)) {
 	c.InputField.SetFinishedFunc(func(key tcell.Key) {
 		c.finishedFunc(key)
 		handler(key)
