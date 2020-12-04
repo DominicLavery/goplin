@@ -24,6 +24,12 @@ var NoteChan = make(chan models.Note)
 var OpenNoteChan = make(chan int)
 var OpenNotebooksChan = make(chan int)
 
+var makeBookChan = make(chan string)
+var makeBookErrorChan = make(chan error)
+
+var makeNoteChan = make(chan string)
+var makeNoteErrorChan = make(chan error)
+
 type Source interface {
 	NotebookReader
 	NotebookWriter

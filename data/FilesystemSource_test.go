@@ -45,7 +45,7 @@ func TestNewFilesystemSourceDeepDirectory_flat(t *testing.T) {
 	if notebooks.highestNotebookId != 4 {
 		t.Errorf("Filesystem did not find the correct amount of notebooks. Expected %d, got %d", 4, notebooks.highestNotebookId)
 	}
-	assertBookIsLike(expectedBooks, notebooks.notebookRoot,t)
+	assertBookIsLike(expectedBooks, notebooks.notebookRoot, t)
 }
 
 func TestNewFilesystemSourceDeepDirectory_deep(t *testing.T) {

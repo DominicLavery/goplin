@@ -31,13 +31,10 @@ func (nv *NoteView) SetNote(note models.Note) {
 	nv.ScrollToBeginning()
 }
 
-func MakeNoteView(app *tview.Application) *NoteView {
-	noteView := NoteView{tview.NewTextView().
+func MakeNoteView() *NoteView {
+	noteView := NoteView{TextView: tview.NewTextView().
 		SetDynamicColors(true).
-		SetRegions(true).
-		SetChangedFunc(func() {
-			app.Draw()
-		}),
+		SetRegions(true),
 	}
 	noteView.SetBorder(true).SetTitle("Note")
 	return &noteView

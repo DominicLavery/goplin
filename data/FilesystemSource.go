@@ -36,6 +36,10 @@ func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 		rootPath: root,
 		fs:       afs,
 	}
+	writer := &FilesystemWriter{
+		rootPath: root,
+		fs:       afs,
+	}
 	if err := afs.Walk(root, reader.walkFn); err != nil {
 		logs.TeeLog("Could not read notebooks", err)
 		notebooks.notebookRoot.Name = "Error"
@@ -43,10 +47,7 @@ func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 
 	filesource := &FilesystemSource{
 		NotebookReader: reader,
-		NotebookWriter: &FilesystemWriter{
-			rootPath: root,
-			fs:       afs,
-		},
+		NotebookWriter: writer,
 	}
 
 	go func() {
@@ -60,6 +61,12 @@ func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 				} else {
 					filesource.OpenBook(id)
 				}
+			case path := <-makeBookChan:
+				err := writer.makeBook(path)
+				makeBookErrorChan <- err
+			case name := <-makeNoteChan:
+				err := writer.makeNote(name)
+				makeNoteErrorChan <- err
 			}
 		}
 	}()
@@ -93,6 +100,18 @@ func (b *FilesystemReader) walkFn(path string, info os.FileInfo, err error) erro
 }
 
 func (b *FilesystemWriter) MakeBook(path string) error {
+	//Offload to the source goroutine
+	makeBookChan <- path
+	return <-makeBookErrorChan
+}
+
+func (b *FilesystemWriter) MakeNote(name string) error {
+	//Offload to the source goroutine
+	makeNoteChan <- name
+	return <-makeNoteErrorChan
+}
+
+func (b *FilesystemWriter) makeBook(path string) error {
 	absPath, _ := filepath.Abs(path)
 	parent, err := parentByPath(path, &notebooks.notebookRoot)
 	if err != nil {
@@ -108,7 +127,7 @@ func (b *FilesystemWriter) MakeBook(path string) error {
 	return nil
 }
 
-func (b *FilesystemWriter) MakeNote(name string) error {
+func (b *FilesystemWriter) makeNote(name string) error {
 	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
 	booksNotes := notesByNotebookId(notebook.Id)
 	for _, note := range booksNotes {
