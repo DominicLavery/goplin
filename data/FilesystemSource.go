@@ -217,6 +217,7 @@ func (b *FilesystemReader) OpenBook(id int) {
 	NotesChan <- books
 	b.openBook = id
 }
+
 func (b *FilesystemReader) OpenBooks() {
 	NotebooksChan <- b.notebooks.notebookRoot
 }
