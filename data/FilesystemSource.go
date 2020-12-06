@@ -142,6 +142,10 @@ func (b *FilesystemReader) getNotes() *Notes {
 	return &b.notes
 }
 
+func (b *FilesystemReader) getOpenBookId() int {
+	return b.openBook
+}
+
 func (b *FilesystemReader) queueUpdate() {
 	b.openBook = -1
 	b.openNote = -1
@@ -167,7 +171,7 @@ func (b *FilesystemWriter) makeBook(reader NotebookReader, path string) error {
 func (b *FilesystemWriter) makeNote(reader NotebookReader, name string) error {
 	notebooks := reader.getNotebooks()
 	notes := reader.getNotes()
-	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
+	notebook := notebookById(reader.getOpenBookId(), &notebooks.notebookRoot)
 	booksNotes := notesByNotebookId(notebook.Id, notes.notes)
 	for _, note := range booksNotes {
 		if note.Name == name+".md" {
@@ -209,7 +213,6 @@ func (b *FilesystemReader) OpenNote(id int) {
 }
 
 func (b *FilesystemReader) OpenBook(id int) {
-	b.notes.openBookId = id
 	books := notesByNotebookId(id, b.notes.notes)
 	NotesChan <- books
 	b.openBook = id

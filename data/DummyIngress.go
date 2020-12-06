@@ -107,7 +107,6 @@ func (b *DummyReader) OpenBooks() {
 }
 
 func (b *DummyReader) OpenBook(id int) {
-	b.notes.openBookId = id
 	books := notesByNotebookId(id, b.notes.notes)
 	NotesChan <- books
 	b.openBook = id
@@ -143,6 +142,9 @@ func (b *DummyReader) queueUpdate() {
 	b.openBook = -1
 	b.openNote = -1
 }
+func (b *DummyReader) getOpenBookId() int {
+	return b.openBook
+}
 
 func (b *DummyWriter) makeBook(reader NotebookReader, path string) error {
 	notebooks := reader.getNotebooks()
@@ -165,7 +167,7 @@ func (b *DummyWriter) makeBook(reader NotebookReader, path string) error {
 func (b *DummyWriter) makeNote(reader NotebookReader, name string) error {
 	notes := reader.getNotes()
 	notebooks := reader.getNotebooks()
-	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
+	notebook := notebookById(reader.getOpenBookId(), &notebooks.notebookRoot)
 	booksNotes := notesByNotebookId(notebook.Id, notes.notes)
 	for _, note := range booksNotes {
 		if note.Name == name+".md" {

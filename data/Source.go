@@ -35,6 +35,7 @@ type NotebookReader interface {
 	getNotebooks() *Notebooks
 	getNotes() *Notes
 	queueUpdate()
+	getOpenBookId() int
 }
 
 type NotebookWriter interface {
