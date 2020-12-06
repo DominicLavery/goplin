@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type DummySource struct {
@@ -13,6 +14,12 @@ type DummySource struct {
 }
 
 type DummyReader struct {
+	requestedBook int
+	requestedNote int
+	openNote      int
+	openBook      int
+	notebooks     Notebooks
+	notes         Notes
 }
 
 type DummyWriter struct {
@@ -29,14 +36,15 @@ const dummyText = `
 
 func NewDummySource() *DummySource {
 	writer := &DummyWriter{}
+	reader := &DummyReader{requestedBook: 0, requestedNote: 0, openNote: -1, openBook: -1}
 	fs := &DummySource{
-		NotebookReader: &DummyReader{},
+		NotebookReader: reader,
 		NotebookWriter: writer,
 	}
 
-	notebooks = Notebooks{
+	reader.notebooks = Notebooks{
 		notebookRoot: models.Notebook{
-			Id: 0, ParentId: -1, Name: "rootBook", Children: []models.Notebook{
+			Id: RootId, ParentId: -1, Name: "rootBook", Children: []models.Notebook{
 				{Id: 1, ParentId: 0, Name: "Book 1", Children: []models.Notebook{
 					{Id: 2, ParentId: 1, Name: "Book 1.1"},
 					{Id: 4, ParentId: 1, Name: "Book 1.2", Children: []models.Notebook{
@@ -50,7 +58,7 @@ func NewDummySource() *DummySource {
 		},
 		highestNotebookId: 6,
 	}
-	notes = Notes{
+	reader.notes = Notes{
 		notes: []models.Note{
 			{Id: 0, NotebookId: 0, Name: "MyGreatNote1"},
 			{Id: 1, NotebookId: 0, Name: "MyGreatNote2"},
@@ -65,19 +73,29 @@ func NewDummySource() *DummySource {
 		for {
 			select {
 			case id := <-OpenNoteChan:
-				fs.OpenNote(id)
+				reader.requestedNote = id
 			case id := <-OpenNotebooksChan:
-				if id == 0 {
-					fs.OpenBooks()
-				} else {
-					fs.OpenBook(id)
+				reader.requestedBook = id
+				booksNotes := notesByNotebookId(id, reader.notes.notes)
+				if len(booksNotes) > 0 {
+					reader.requestedNote = booksNotes[0].Id
 				}
 			case path := <-makeBookChan:
-				err := writer.makeBook(path)
+				err := writer.makeBook(reader, path)
 				makeBookErrorChan <- err
 			case name := <-makeNoteChan:
-				err := writer.makeNote(name)
+				err := writer.makeNote(reader, name)
 				makeNoteErrorChan <- err
+			case <-time.After(250 * time.Millisecond): // TODO get rid of magic number for refresh interval
+				if reader.openBook == -1 {
+					reader.OpenBooks()
+				}
+				if reader.requestedBook != reader.openBook {
+					reader.OpenBook(reader.requestedBook)
+				}
+				if reader.requestedNote != reader.openNote {
+					reader.OpenNote(reader.requestedNote)
+				}
 			}
 		}
 	}()
@@ -85,53 +103,70 @@ func NewDummySource() *DummySource {
 }
 
 func (b *DummyReader) OpenBooks() {
-	NotebooksChan <- notebooks.notebookRoot
-	b.OpenBook(notebooks.notebookRoot.Id)
+	NotebooksChan <- b.notebooks.notebookRoot
 }
 
 func (b *DummyReader) OpenBook(id int) {
-	notes.openBookId = id
-	books := notesByNotebookId(id)
+	b.notes.openBookId = id
+	books := notesByNotebookId(id, b.notes.notes)
 	NotesChan <- books
-	if len(books) > 0 {
-		b.OpenNote(books[0].Id)
-	}
+	b.openBook = id
 }
 
 func (b *DummyReader) OpenNote(id int) {
-	note := noteById(&notes.notes, id)
+	note := noteById(&b.notes.notes, id)
 	note.Body = strings.NewReader(note.Name + dummyText)
 	NoteChan <- *note
+	b.openNote = id
 }
 
-func (b *DummyWriter) MakeBook(path string) error {
+func (b *DummySource) MakeBook(path string) error {
 	//Offload to the source goroutine
 	makeBookChan <- path
 	return <-makeBookErrorChan
 }
 
-func (b *DummyWriter) MakeNote(name string) error {
+func (b *DummySource) MakeNote(name string) error {
 	//Offload to the source goroutine
 	makeNoteChan <- name
 	return <-makeNoteErrorChan
 }
 
-func (b *DummyWriter) makeBook(path string) error {
+func (b *DummyReader) getNotebooks() *Notebooks {
+	return &b.notebooks
+}
+
+func (b *DummyReader) getNotes() *Notes {
+	return &b.notes
+}
+func (b *DummyReader) queueUpdate() {
+	b.openBook = -1
+	b.openNote = -1
+}
+
+func (b *DummyWriter) makeBook(reader NotebookReader, path string) error {
+	notebooks := reader.getNotebooks()
 	parent, err := parentByPath(path, &notebooks.notebookRoot)
 	if err != nil {
 		return err
 	}
 	_, dir := filepath.Split(path)
+	for _, book := range parent.Children {
+		if book.Name == dir {
+			return errors.New("There is already a book at path " + path)
+		}
+	}
 	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: path})
 	notebooks.highestNotebookId++
-	NotebooksChan <- notebooks.notebookRoot
+	reader.queueUpdate()
 	return nil
 }
 
-func (b *DummyWriter) makeNote(name string) error {
-
+func (b *DummyWriter) makeNote(reader NotebookReader, name string) error {
+	notes := reader.getNotes()
+	notebooks := reader.getNotebooks()
 	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
-	booksNotes := notesByNotebookId(notebook.Id)
+	booksNotes := notesByNotebookId(notebook.Id, notes.notes)
 	for _, note := range booksNotes {
 		if note.Name == name+".md" {
 			return errors.New("There is already a note named " + name)
@@ -142,6 +177,6 @@ func (b *DummyWriter) makeNote(name string) error {
 	notes.highestNoteId++
 	note := models.Note{Name: name + ".md", Id: notes.highestNoteId, NotebookId: notebook.Id, Path: path}
 	notes.notes = append(notes.notes, note)
-	NotesChan <- append(booksNotes, note)
+	reader.queueUpdate()
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type FilesystemSource struct {
@@ -17,8 +18,14 @@ type FilesystemSource struct {
 }
 
 type FilesystemReader struct {
-	rootPath string
-	fs       *afero.Afero
+	rootPath      string
+	fs            *afero.Afero
+	requestedBook int
+	requestedNote int
+	openNote      int
+	openBook      int
+	notebooks     Notebooks
+	notes         Notes
 }
 
 type FilesystemWriter struct {
@@ -33,8 +40,12 @@ func NewFilesystemSource(root string) *FilesystemSource {
 func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 	afs := &afero.Afero{Fs: fs}
 	reader := &FilesystemReader{
-		rootPath: root,
-		fs:       afs,
+		rootPath:      root,
+		fs:            afs,
+		requestedBook: 0,
+		requestedNote: 0,
+		openNote:      -1,
+		openBook:      -1,
 	}
 	writer := &FilesystemWriter{
 		rootPath: root,
@@ -42,7 +53,7 @@ func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 	}
 	if err := afs.Walk(root, reader.walkFn); err != nil {
 		logs.TeeLog("Could not read notebooks", err)
-		notebooks.notebookRoot.Name = "Error"
+		reader.notebooks.notebookRoot.Name = "Error"
 	}
 
 	filesource := &FilesystemSource{
@@ -54,19 +65,29 @@ func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 		for {
 			select {
 			case id := <-OpenNoteChan:
-				filesource.OpenNote(id)
+				reader.requestedNote = id
 			case id := <-OpenNotebooksChan:
-				if id == 0 {
-					filesource.OpenBooks()
-				} else {
-					filesource.OpenBook(id)
+				reader.requestedBook = id
+				booksNotes := notesByNotebookId(id, reader.notes.notes)
+				if len(booksNotes) > 0 {
+					reader.requestedNote = booksNotes[0].Id
 				}
 			case path := <-makeBookChan:
-				err := writer.makeBook(path)
+				err := writer.makeBook(reader, path)
 				makeBookErrorChan <- err
 			case name := <-makeNoteChan:
-				err := writer.makeNote(name)
+				err := writer.makeNote(reader, name)
 				makeNoteErrorChan <- err
+			case <-time.After(250 * time.Millisecond): // TODO get rid of magic number for refresh interval
+				if reader.openBook == -1 {
+					reader.OpenBooks()
+				}
+				if reader.requestedBook != reader.openBook {
+					reader.OpenBook(reader.requestedBook)
+				}
+				if reader.requestedNote != reader.openNote {
+					reader.OpenNote(reader.requestedNote)
+				}
 			}
 		}
 	}()
@@ -83,35 +104,51 @@ func (b *FilesystemReader) walkFn(path string, info os.FileInfo, err error) erro
 	}
 
 	relPath, _ := filepath.Rel(b.rootPath, path)
-	parent, _ := parentByPath(relPath, &notebooks.notebookRoot)
+	parent, _ := parentByPath(relPath, &b.notebooks.notebookRoot)
 	if path == b.rootPath {
-		notebooks.notebookRoot.Name = info.Name()
-		notebooks.notebookRoot.Path = path
-		notebooks.highestNotebookId++
+		b.notebooks.notebookRoot.Name = info.Name()
+		b.notebooks.notebookRoot.Id = RootId
+		b.notebooks.notebookRoot.Path = path
+		b.notebooks.notebookRoot.ParentId = -1
+		b.notebooks.highestNotebookId++
 	} else if info.IsDir() {
-		notebook := models.Notebook{Name: info.Name(), Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: path}
+		notebook := models.Notebook{Name: info.Name(), Id: b.notebooks.highestNotebookId, ParentId: parent.Id, Path: path}
 		parent.Children = append(parent.Children, notebook)
-		notebooks.highestNotebookId++
+		b.notebooks.highestNotebookId++
 	} else if strings.HasSuffix(info.Name(), ".md") {
-		notes.notes = append(notes.notes, models.Note{Name: info.Name(), Id: notes.highestNoteId, NotebookId: parent.Id, Path: path})
-		notes.highestNoteId++
+		b.notes.notes = append(b.notes.notes, models.Note{Name: info.Name(), Id: b.notes.highestNoteId, NotebookId: parent.Id, Path: path})
+		b.notes.highestNoteId++
 	}
 	return nil
 }
 
-func (b *FilesystemWriter) MakeBook(path string) error {
+func (b *FilesystemSource) MakeBook(path string) error {
 	//Offload to the source goroutine
 	makeBookChan <- path
 	return <-makeBookErrorChan
 }
 
-func (b *FilesystemWriter) MakeNote(name string) error {
+func (b *FilesystemSource) MakeNote(name string) error {
 	//Offload to the source goroutine
 	makeNoteChan <- name
 	return <-makeNoteErrorChan
 }
 
-func (b *FilesystemWriter) makeBook(path string) error {
+func (b *FilesystemReader) getNotebooks() *Notebooks {
+	return &b.notebooks
+}
+
+func (b *FilesystemReader) getNotes() *Notes {
+	return &b.notes
+}
+
+func (b *FilesystemReader) queueUpdate() {
+	b.openBook = -1
+	b.openNote = -1
+}
+
+func (b *FilesystemWriter) makeBook(reader NotebookReader, path string) error {
+	notebooks := reader.getNotebooks()
 	absPath, _ := filepath.Abs(path)
 	parent, err := parentByPath(path, &notebooks.notebookRoot)
 	if err != nil {
@@ -123,13 +160,15 @@ func (b *FilesystemWriter) makeBook(path string) error {
 	_, dir := filepath.Split(path)
 	notebooks.highestNotebookId++
 	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath}) // TODO make relPath
-	NotebooksChan <- notebooks.notebookRoot
+	reader.queueUpdate()
 	return nil
 }
 
-func (b *FilesystemWriter) makeNote(name string) error {
+func (b *FilesystemWriter) makeNote(reader NotebookReader, name string) error {
+	notebooks := reader.getNotebooks()
+	notes := reader.getNotes()
 	notebook := notebookById(notes.openBookId, &notebooks.notebookRoot)
-	booksNotes := notesByNotebookId(notebook.Id)
+	booksNotes := notesByNotebookId(notebook.Id, notes.notes)
 	for _, note := range booksNotes {
 		if note.Name == name+".md" {
 			return errors.New("There is already a note named " + name)
@@ -145,18 +184,18 @@ func (b *FilesystemWriter) makeNote(name string) error {
 	note := models.Note{Name: name + ".md", Id: notes.highestNoteId, NotebookId: notebook.Id, Path: path}
 	notes.notes = append(notes.notes, note)
 	_ = file.Close()
-	NotesChan <- append(booksNotes, note)
+	reader.queueUpdate()
 	return nil
 }
 
 func (b *FilesystemReader) OpenNote(id int) {
-	if notes.openNote != nil {
-		if closer, ok := notes.openNote.Body.(io.Closer); ok {
+	if b.notes.openNote != nil {
+		if closer, ok := b.notes.openNote.Body.(io.Closer); ok {
 			_ = closer.Close()
 		}
 	}
 
-	note := noteById(&notes.notes, id)
+	note := noteById(&b.notes.notes, id)
 	var file afero.File
 	var err error
 	if file, err = b.fs.Open(note.Path); err != nil {
@@ -166,17 +205,15 @@ func (b *FilesystemReader) OpenNote(id int) {
 		note.Body = file
 	}
 	NoteChan <- *note
+	b.openNote = id
 }
 
 func (b *FilesystemReader) OpenBook(id int) {
-	notes.openBookId = id
-	books := notesByNotebookId(id)
+	b.notes.openBookId = id
+	books := notesByNotebookId(id, b.notes.notes)
 	NotesChan <- books
-	if len(books) > 0 {
-		b.OpenNote(books[0].Id)
-	}
+	b.openBook = id
 }
 func (b *FilesystemReader) OpenBooks() {
-	NotebooksChan <- notebooks.notebookRoot
-	b.OpenBook(notebooks.notebookRoot.Id)
+	NotebooksChan <- b.notebooks.notebookRoot
 }

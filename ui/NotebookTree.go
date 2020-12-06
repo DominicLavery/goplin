@@ -26,6 +26,28 @@ func add(notebooks []models.Notebook, target *tview.TreeNode) {
 	}
 }
 
+func lookForSelected(target *tview.TreeNode, selected interface{}) *tview.TreeNode {
+	if target.GetReference() == selected {
+		return target
+	}
+	for _, child := range target.GetChildren() {
+		found := lookForSelected(child, selected)
+		if found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func getSelectedNode(target *tview.TreeNode, selected interface{}) *tview.TreeNode {
+	found := lookForSelected(target, selected)
+	if found != nil {
+		return found
+	}
+	//Nothing found, default to the root
+	return target
+}
+
 func findExpanded(nodes []*tview.TreeNode) []int {
 	var expanded []int
 	for _, node := range nodes {
@@ -61,6 +83,12 @@ func applyExpand(expanded []int, nodes []*tview.TreeNode) {
 
 func (nt *NotebookTree) SetNotebook(notebook models.Notebook) {
 	var notebookRoot *tview.TreeNode
+	var currentSelection interface{}
+	if nt.GetCurrentNode() != nil {
+		currentSelection = nt.GetCurrentNode().GetReference()
+	} else {
+		currentSelection = 0
+	}
 	notebookRoot = makeTreeNode(notebook).
 		SetExpanded(true).
 		SetColor(tcell.ColorRed)
@@ -71,7 +99,7 @@ func (nt *NotebookTree) SetNotebook(notebook models.Notebook) {
 		applyExpand(expanded, notebookRoot.GetChildren())
 	}
 	nt.SetRoot(notebookRoot).
-		SetCurrentNode(notebookRoot)
+		SetCurrentNode(getSelectedNode(notebookRoot, currentSelection))
 }
 
 func MakeNotebookView() *NotebookTree {
@@ -84,7 +112,7 @@ func MakeNotebookView() *NotebookTree {
 		}).
 		SetSelectedFunc(func(node *tview.TreeNode) {
 			reference := node.GetReference()
-			if reference == 0 {
+			if reference == data.RootId {
 				return // Selecting the notebookRoot node does nothing.
 			}
 			children := node.GetChildren()

@@ -89,7 +89,6 @@ func MakeApp(source data.Source) *tview.Application {
 	}).SetRoot(flex, true)
 
 	go func() {
-		data.OpenNotebooksChan <- 0
 		for {
 			select {
 			case notebooks := <-data.NotebooksChan:

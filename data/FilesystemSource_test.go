@@ -39,13 +39,13 @@ func TestNewFilesystemSourceDeepDirectory_flat(t *testing.T) {
 	}
 
 	//act
-	newFilesystemSource("/root", &afero.Afero{Fs: afs})
+	fs := newFilesystemSource("/root", &afero.Afero{Fs: afs})
 
 	//assert
-	if notebooks.highestNotebookId != 4 {
-		t.Errorf("Filesystem did not find the correct amount of notebooks. Expected %d, got %d", 4, notebooks.highestNotebookId)
+	if fs.getNotebooks().highestNotebookId != 4 {
+		t.Errorf("Filesystem did not find the correct amount of notebooks. Expected %d, got %d", 4, fs.getNotebooks().highestNotebookId)
 	}
-	assertBookIsLike(expectedBooks, notebooks.notebookRoot, t)
+	assertBookIsLike(expectedBooks, fs.getNotebooks().notebookRoot, t)
 }
 
 func TestNewFilesystemSourceDeepDirectory_deep(t *testing.T) {
@@ -77,14 +77,14 @@ func TestNewFilesystemSourceDeepDirectory_deep(t *testing.T) {
 	}
 
 	//act
-	newFilesystemSource("/root", &afero.Afero{Fs: afs})
+	fs := newFilesystemSource("/root", &afero.Afero{Fs: afs})
 
 	//assert
-	if notebooks.highestNotebookId != 4 {
-		t.Errorf("Filesystem did not find the correct amount of notebooks. Expected %d, got %d", 4, notebooks.highestNotebookId)
+	if fs.getNotebooks().highestNotebookId != 4 {
+		t.Errorf("Filesystem did not find the correct amount of notebooks. Expected %d, got %d", 4, fs.getNotebooks().highestNotebookId)
 	}
 
-	assertBookIsLike(expectedBooks, notebooks.notebookRoot, t)
+	assertBookIsLike(expectedBooks, fs.getNotebooks().notebookRoot, t)
 }
 
 func TestFilesystemWriter_MakeBook(t *testing.T) {
@@ -92,12 +92,14 @@ func TestFilesystemWriter_MakeBook(t *testing.T) {
 	afs := afero.NewMemMapFs()
 	_ = afs.Mkdir("/root", 0644)
 
-	fs := FilesystemWriter{
+	fw := FilesystemWriter{
 		rootPath: "/root",
 		fs:       &afero.Afero{Fs: afs},
 	}
-	notebooks.notebookRoot.Name = "root"
-	notebooks.notebookRoot.Path = "/root"
+	dr := DummyReader{notebooks: Notebooks{notebookRoot: models.Notebook{
+		Name: "root",
+		Path: "/root",
+	}}}
 	expectedBook := models.Notebook{
 		Id:       1,
 		ParentId: 0,
@@ -106,16 +108,13 @@ func TestFilesystemWriter_MakeBook(t *testing.T) {
 	}
 
 	//act
-	go func() {
-		_ = fs.MakeBook("new")
-	}()
-	notebooks := <-NotebooksChan
+	_ = fw.makeBook(&dr, "new")
 
 	//assert
-	if len(notebooks.Children) != 1 {
-		t.Errorf("Expected root book to have 1 children. Had %d children", len(notebooks.Children))
+	if len(dr.getNotebooks().notebookRoot.Children) != 1 {
+		t.Errorf("Expected root book to have 1 children. Had %d children", len(dr.getNotebooks().notebookRoot.Children))
 	}
-	assertBookIsLike(expectedBook, notebooks.Children[0], t)
+	assertBookIsLike(expectedBook, dr.getNotebooks().notebookRoot.Children[0], t)
 	//TODO test for dir existence once relative pathing is correctly set up (and therefore, the location of the dir is predictable)
 }
 
