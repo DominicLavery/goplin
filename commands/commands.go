@@ -28,7 +28,8 @@ Options:
 		Long:    strings.TrimSpace(helpText),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return source.MakeBook(args[0])
-		}}
+		},
+	}
 }
 
 func NewMakeNoteCommand(source data.Source) *cobra.Command {
@@ -51,5 +52,6 @@ Options:
 		Long:    strings.TrimSpace(helpText),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return source.MakeNote(args[0])
-		}}
+		},
+	}
 }

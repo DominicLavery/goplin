@@ -6,26 +6,30 @@ import (
 	"github.com/derailed/tview"
 )
 
-func MakeNotesTree(source data.Source) *tview.Table {
-	table := tview.NewTable().
-		SetBorders(false).
-		SetSelectable(true, false)
+type NotesTree struct {
+	*tview.Table
+}
 
-	source.Notes(func(notes []models.Note) {
-		table.Clear()
-		if len(notes) > 0 {
-			source.OpenNote(notes[0].Id)
-			for i, note := range notes {
-				table.SetCell(i, 0, tview.NewTableCell(note.Name).SetReference(note.Id)).SetBorder(true)
-			}
-		} else {
-			table.SetCell(0, 0, tview.NewTableCell("No notes found")).SetBorder(true)
+func (nt *NotesTree) SetNotes(notes []models.Note) {
+	nt.Clear()
+	if len(notes) > 0 {
+		for i, note := range notes {
+			nt.SetCell(i, 0, tview.NewTableCell(note.Name).SetReference(note.Id)).SetBorder(true)
 		}
-	})
+	} else {
+		nt.SetCell(0, 0, tview.NewTableCell("No notes found")).SetBorder(true)
+	}
+}
+
+func MakeNotesTree() *NotesTree {
+	table := NotesTree{Table: tview.NewTable().
+		SetBorders(false).
+		SetSelectable(true, false)}
+
 	table.SetSelectionChangedFunc(func(row int, column int) {
 		cell := table.GetCell(row, column)
-		source.OpenNote(cell.GetReference().(int))
+		data.OpenNoteChan <- cell.GetReference().(int)
 	})
 	table.SetTitle("Notes")
-	return table
+	return &table
 }

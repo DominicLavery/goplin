@@ -6,14 +6,41 @@ import (
 	"strings"
 )
 
+const RootId = 0
+
+var NotebooksChan = make(chan models.Notebook)
+var NotesChan = make(chan []models.Note)
+var NoteChan = make(chan models.Note)
+
+var OpenNoteChan = make(chan int)
+var OpenNotebooksChan = make(chan int)
+
+var makeBookChan = make(chan string)
+var makeBookErrorChan = make(chan error)
+
+var makeNoteChan = make(chan string)
+var makeNoteErrorChan = make(chan error)
+
 type Source interface {
-	Notebooks(notebookCallback func(models.Notebook))
-	Notes(noteCallback func([]models.Note))
-	Note(noteCallback func(models.Note))
-	OpenBook(id int)
-	OpenNote(id int)
+	NotebookReader
+	NotebookWriter
 	MakeBook(path string) error
 	MakeNote(name string) error
+}
+
+type NotebookReader interface {
+	OpenBook(id int)
+	OpenBooks()
+	OpenNote(id int)
+	getNotebooks() *Notebooks
+	getNotes() *Notes
+	queueUpdate()
+	getOpenBookId() int
+}
+
+type NotebookWriter interface {
+	makeBook(reader NotebookReader, path string) error
+	makeNote(reader NotebookReader, name string) error
 }
 
 func parentByPath(path string, notebooks *models.Notebook) (*models.Notebook, error) {
@@ -53,7 +80,7 @@ func notebookById(id int, notebooks *models.Notebook) *models.Notebook {
 	return found
 }
 
-func notesByNotebookId(notes []models.Note, notebookId int) []models.Note {
+func notesByNotebookId(notebookId int, notes []models.Note) []models.Note {
 	filtered := make([]models.Note, 0)
 	for _, note := range notes {
 		if note.NotebookId == notebookId {

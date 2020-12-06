@@ -12,8 +12,9 @@ var ConsoleView = tview.NewTextView().
 
 func SetApp(app *tview.Application) *tview.TextView {
 	ConsoleView.SetChangedFunc(func() {
-		ConsoleView.ScrollToEnd()
-		app.Draw()
+		app.QueueUpdateDraw(func() {
+			ConsoleView.ScrollToEnd()
+		})
 	}).SetBorder(true)
 
 	return ConsoleView

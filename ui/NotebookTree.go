@@ -7,6 +7,10 @@ import (
 	"github.com/gdamore/tcell"
 )
 
+type NotebookTree struct {
+	*tview.TreeView
+}
+
 func makeTreeNode(book models.Notebook) *tview.TreeNode {
 	return tview.NewTreeNode(book.Name).
 		SetReference(book.Id).
@@ -20,6 +24,28 @@ func add(notebooks []models.Notebook, target *tview.TreeNode) {
 		node.SetExpanded(false)
 		target.AddChild(node)
 	}
+}
+
+func lookForSelected(target *tview.TreeNode, selected interface{}) *tview.TreeNode {
+	if target.GetReference() == selected {
+		return target
+	}
+	for _, child := range target.GetChildren() {
+		found := lookForSelected(child, selected)
+		if found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func getSelectedNode(target *tview.TreeNode, selected interface{}) *tview.TreeNode {
+	found := lookForSelected(target, selected)
+	if found != nil {
+		return found
+	}
+	//Nothing found, default to the root
+	return target
 }
 
 func findExpanded(nodes []*tview.TreeNode) []int {
@@ -55,32 +81,38 @@ func applyExpand(expanded []int, nodes []*tview.TreeNode) {
 	}
 }
 
-func MakeNotebookView(source data.Source) *tview.TreeView {
-	notebookTree := tview.NewTreeView()
+func (nt *NotebookTree) SetNotebook(notebook models.Notebook) {
+	var notebookRoot *tview.TreeNode
+	var currentSelection interface{}
+	if nt.GetCurrentNode() != nil {
+		currentSelection = nt.GetCurrentNode().GetReference()
+	} else {
+		currentSelection = 0
+	}
+	notebookRoot = makeTreeNode(notebook).
+		SetExpanded(true).
+		SetColor(tcell.ColorRed)
+	add(notebook.Children, notebookRoot)
+	notebookRoot.SetExpanded(true)
+	if nt.GetRoot() != nil {
+		expanded := findExpanded(nt.GetRoot().GetChildren())
+		applyExpand(expanded, notebookRoot.GetChildren())
+	}
+	nt.SetRoot(notebookRoot).
+		SetCurrentNode(getSelectedNode(notebookRoot, currentSelection))
+}
 
-	source.Notebooks(func(notebook models.Notebook) {
-		var notebookRoot *tview.TreeNode
-		notebookRoot = makeTreeNode(notebook).
-			SetExpanded(true).
-			SetColor(tcell.ColorRed)
-		add(notebook.Children, notebookRoot)
-		notebookRoot.SetExpanded(true)
-		if notebookTree.GetRoot() != nil {
-			expanded := findExpanded(notebookTree.GetRoot().GetChildren())
-			applyExpand(expanded, notebookRoot.GetChildren())
-		}
-		notebookTree.SetRoot(notebookRoot).
-			SetCurrentNode(notebookRoot)
-	})
+func MakeNotebookView() *NotebookTree {
+	notebookTree := NotebookTree{tview.NewTreeView()}
 
 	notebookTree.
 		SetChangedFunc(func(node *tview.TreeNode) {
 			reference := node.GetReference()
-			source.OpenBook(reference.(int))
+			data.OpenNotebooksChan <- reference.(int)
 		}).
 		SetSelectedFunc(func(node *tview.TreeNode) {
 			reference := node.GetReference()
-			if reference == 0 {
+			if reference == data.RootId {
 				return // Selecting the notebookRoot node does nothing.
 			}
 			children := node.GetChildren()
@@ -88,6 +120,7 @@ func MakeNotebookView(source data.Source) *tview.TreeView {
 				node.SetExpanded(!node.IsExpanded())
 			}
 		})
+
 	notebookTree.SetBorder(true).SetTitle("Notebooks")
-	return notebookTree
+	return &notebookTree
 }
