@@ -3,7 +3,6 @@ package data
 import (
 	"dominiclavery/goplin/models"
 	"errors"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -146,19 +145,15 @@ func (b *DummyReader) getOpenBookId() int {
 	return b.openBook
 }
 
-func (b *DummyWriter) makeBook(reader NotebookReader, path string) error {
+func (b *DummyWriter) makeBook(reader NotebookReader, name string) error {
 	notebooks := reader.getNotebooks()
-	parent, err := parentByPath(path, &notebooks.notebookRoot)
-	if err != nil {
-		return err
-	}
-	_, dir := filepath.Split(path)
+	parent := notebookById(reader.getOpenBookId(), &notebooks.notebookRoot)
 	for _, book := range parent.Children {
-		if book.Name == dir {
-			return errors.New("There is already a book at path " + path)
+		if book.Name == name {
+			return errors.New("There is already a book of " + name)
 		}
 	}
-	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: path})
+	parent.Children = append(parent.Children, models.Notebook{Name: name, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: parent.Path+"/"+name})
 	notebooks.highestNotebookId++
 	reader.queueUpdate()
 	return nil

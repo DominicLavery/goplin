@@ -8,12 +8,10 @@ import (
 
 func NewMakeBookCommand(source data.Source) *cobra.Command {
 	helpText := `
-Usage: makebook PATH
-  Creates a new notebook at the given path PATH.
+Usage: makebook NAME
+  Creates a new notebook under the the currently
+  selected notebook with the given name.
 
-  PATH should be in the form of notebook names
-  separated by a forward slash '/'. For example,
-  ParentBook/NewBook. 
   Quotes can be used to create books with spaces 
   in the path. For example: "Parent Book/New Book"
 
@@ -21,7 +19,7 @@ Options:
   [None]
 `
 	return &cobra.Command{
-		Use:     "makeBook path",
+		Use:     "makeBook name",
 		Args:    cobra.MinimumNArgs(1),
 		Aliases: []string{"mkbook", "mkb", "makebook"},
 		Short:   "Creates a new notebook",

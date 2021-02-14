@@ -18,7 +18,6 @@ type FilesystemSource struct {
 }
 
 type FilesystemReader struct {
-	rootPath      string
 	fs            *afero.Afero
 	requestedBook int
 	requestedNote int
@@ -29,18 +28,17 @@ type FilesystemReader struct {
 }
 
 type FilesystemWriter struct {
-	rootPath string
 	fs       *afero.Afero
 }
 
 func NewFilesystemSource(root string) *FilesystemSource {
-	return newFilesystemSource(root, afero.NewOsFs())
+	fs := afero.NewBasePathFs(afero.NewOsFs(), root)
+	return newFilesystemSource("/", fs)
 }
 
 func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 	afs := &afero.Afero{Fs: fs}
 	reader := &FilesystemReader{
-		rootPath:      root,
 		fs:            afs,
 		requestedBook: 0,
 		requestedNote: 0,
@@ -48,7 +46,6 @@ func newFilesystemSource(root string, fs afero.Fs) *FilesystemSource {
 		openBook:      -1,
 	}
 	writer := &FilesystemWriter{
-		rootPath: root,
 		fs:       afs,
 	}
 	if err := afs.Walk(root, reader.walkFn); err != nil {
@@ -103,9 +100,8 @@ func (b *FilesystemReader) walkFn(path string, info os.FileInfo, err error) erro
 		return filepath.SkipDir
 	}
 
-	relPath, _ := filepath.Rel(b.rootPath, path)
-	parent, _ := parentByPath(relPath, &b.notebooks.notebookRoot)
-	if path == b.rootPath {
+	parent, _ := parentByPath(path, &b.notebooks.notebookRoot)
+	if path == "/" {
 		b.notebooks.notebookRoot.Name = info.Name()
 		b.notebooks.notebookRoot.Id = RootId
 		b.notebooks.notebookRoot.Path = path
@@ -151,19 +147,15 @@ func (b *FilesystemReader) queueUpdate() {
 	b.openNote = -1
 }
 
-func (b *FilesystemWriter) makeBook(reader NotebookReader, path string) error {
+func (b *FilesystemWriter) makeBook(reader NotebookReader, name string) error {
 	notebooks := reader.getNotebooks()
-	absPath, _ := filepath.Abs(path)
-	parent, err := parentByPath(path, &notebooks.notebookRoot)
-	if err != nil {
+	parent := notebookById(reader.getOpenBookId(), &notebooks.notebookRoot)
+	path := parent.Path + "/" + name
+	if err := b.fs.Mkdir(path, os.ModePerm); err != nil {
 		return err
 	}
-	if err := b.fs.Mkdir(absPath, os.ModePerm); err != nil {
-		return err
-	}
-	_, dir := filepath.Split(path)
 	notebooks.highestNotebookId++
-	parent.Children = append(parent.Children, models.Notebook{Name: dir, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: absPath}) // TODO make relPath
+	parent.Children = append(parent.Children, models.Notebook{Name: name, Id: notebooks.highestNotebookId, ParentId: parent.Id, Path: path})
 	reader.queueUpdate()
 	return nil
 }

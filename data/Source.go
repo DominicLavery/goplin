@@ -24,7 +24,7 @@ var makeNoteErrorChan = make(chan error)
 type Source interface {
 	NotebookReader
 	NotebookWriter
-	MakeBook(path string) error
+	MakeBook(name string) error
 	MakeNote(name string) error
 }
 
@@ -45,7 +45,8 @@ type NotebookWriter interface {
 
 func parentByPath(path string, notebooks *models.Notebook) (*models.Notebook, error) {
 	pathParts := strings.Split(path, "/")
-	pathParts = pathParts[:len(pathParts)-1] // remove the name
+	pathParts = pathParts[1:len(pathParts)-1] // remove the name and empty part
+
 	parent := notebooks
 	for _, part := range pathParts {
 		parent = notebookByName(part, &parent.Children)

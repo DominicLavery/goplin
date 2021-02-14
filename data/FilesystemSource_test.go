@@ -99,7 +99,8 @@ func TestNewFilesystemSourceNotebooksLoading(t *testing.T) {
 			makeDirStructure(test.fileStructure, "/", afs)
 
 			//act
-			fs := newFilesystemSource("/root", &afero.Afero{Fs: afs})
+
+			fs := newFilesystemSource("/", &afero.Afero{Fs: afero.NewBasePathFs(afs, "/root")})
 
 			//assert
 			assertBookIsLike(test.expectedBooks, fs.getNotebooks().notebookRoot, t)
@@ -113,7 +114,6 @@ func TestFilesystemWriter_MakeBook(t *testing.T) {
 	_ = afs.Mkdir("/root", 0644)
 
 	fw := FilesystemWriter{
-		rootPath: "/root",
 		fs:       &afero.Afero{Fs: afs},
 	}
 	dr := DummyReader{notebooks: Notebooks{notebookRoot: models.Notebook{
@@ -144,7 +144,6 @@ func TestFilesystemWriter_MakeNote(t *testing.T) {
 	_ = afs.Mkdir("/root", 0644)
 
 	fw := FilesystemWriter{
-		rootPath: "/root",
 		fs:       &afero.Afero{Fs: afs},
 	}
 	dr := DummyReader{notebooks: Notebooks{
