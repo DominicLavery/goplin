@@ -14,16 +14,21 @@ const (
 	NoteViewPos
 )
 
-func MakeApp(source data.Source) *tview.Application {
+var app *tview.Application
+var notebookTree *NotebookTree
+var notesTree *NotesTree
+var noteView *NoteView
+
+func MakeApp() *tview.Application {
 	focusedView := 0
 	cmdMode := false
 	displayConsole := true
 
-	app := tview.NewApplication()
-	noteView := MakeNoteView()
-	notesTree := MakeNotesTree()
-	notebookTree := MakeNotebookView()
-	cmdLine := MakeCmdLine(source)
+	app = tview.NewApplication()
+	noteView = MakeNoteView()
+	notesTree = MakeNotesTree()
+	notebookTree = MakeNotebookView()
+	cmdLine := MakeCmdLine()
 	consoleView := logs.SetApp(app)
 
 	var displays = []tview.Primitive{
@@ -88,29 +93,12 @@ func MakeApp(source data.Source) *tview.Application {
 		return event
 	}).SetRoot(flex, true)
 
-	go func() {
-		for {
-			select {
-			case notebooks := <-data.NotebooksChan:
-				go func() {
-					app.QueueUpdateDraw(func() {
-						notebookTree.SetNotebook(notebooks)
-					})
-				}()
-			case notes := <-data.NotesChan:
-				go func() {
-					app.QueueUpdateDraw(func() {
-						notesTree.SetNotes(notes)
-					})
-				}()
-			case note := <-data.NoteChan:
-				go func() {
-					app.QueueUpdateDraw(func() {
-						noteView.SetNote(note)
-					})
-				}()
-			}
-		}
-	}()
+	UpdateUI()
 	return app
+}
+
+func UpdateUI() {
+	tree := data.GetBooks()
+	local := tree["Local"] //TODO
+	notebookTree.SetNotebook(local.NotebookRoot)
 }

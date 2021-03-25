@@ -2,15 +2,15 @@ package ui
 
 import (
 	"dominiclavery/goplin/data"
-	"dominiclavery/goplin/models"
 	"github.com/derailed/tview"
+	"github.com/google/uuid"
 )
 
 type NotesTree struct {
 	*tview.Table
 }
 
-func (nt *NotesTree) SetNotes(notes []models.Note) {
+func (nt *NotesTree) SetNotes(notes []*data.Note) {
 	nt.Clear()
 	if len(notes) > 0 {
 		for i, note := range notes {
@@ -19,6 +19,7 @@ func (nt *NotesTree) SetNotes(notes []models.Note) {
 	} else {
 		nt.SetCell(0, 0, tview.NewTableCell("No notes found")).SetBorder(true)
 	}
+	nt.Select(0, 0)
 }
 
 func MakeNotesTree() *NotesTree {
@@ -28,7 +29,12 @@ func MakeNotesTree() *NotesTree {
 
 	table.SetSelectionChangedFunc(func(row int, column int) {
 		cell := table.GetCell(row, column)
-		data.OpenNoteChan <- cell.GetReference().(int)
+		if cell.GetReference() != nil {
+			note := data.GetNote(cell.GetReference().(uuid.UUID))
+			noteView.SetNote(note)
+		} else {
+			noteView.Clear()
+		}
 	})
 	table.SetTitle("Notes")
 	return &table

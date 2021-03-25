@@ -2,19 +2,16 @@ package ui
 
 import (
 	"dominiclavery/goplin/commands"
-	"dominiclavery/goplin/data"
 	"dominiclavery/goplin/logs"
+	"encoding/csv"
 	"github.com/derailed/tview"
 	"github.com/gdamore/tcell"
 	"github.com/spf13/cobra"
 	"log"
-
-	"encoding/csv"
 	"strings"
 )
 
 type CmdLine struct {
-	source  data.NotebookWriter
 	rootCmd *cobra.Command
 	*tview.InputField
 }
@@ -37,16 +34,20 @@ func (c *CmdLine) finishedFunc(key tcell.Key) {
 	}
 }
 
-func MakeCmdLine(source data.Source) *CmdLine {
+func MakeCmdLine() *CmdLine {
 	cmdLine := CmdLine{InputField: tview.NewInputField()}
 	cmdLine.SetFieldBackgroundColor(tview.Styles.PrimitiveBackgroundColor)
 	cmdLine.rootCmd = &cobra.Command{}
 	cmdLine.rootCmd.SetOut(logs.ConsoleView)
 	cmdLine.rootCmd.SetErr(logs.ConsoleView)
 
-	mkbookCommand := commands.NewMakeBookCommand(source)
+	mkbookCommand := commands.NewMakeBookCommand(func() {
+		UpdateUI()
+	})
 	cmdLine.rootCmd.AddCommand(mkbookCommand)
-	mknoteCommand := commands.NewMakeNoteCommand(source)
+	mknoteCommand := commands.NewMakeNoteCommand(func() {
+		UpdateUI()
+	})
 	cmdLine.rootCmd.AddCommand(mknoteCommand)
 	cmdLine.InputField.SetFinishedFunc(func(key tcell.Key) { cmdLine.finishedFunc(key) })
 	return &cmdLine
