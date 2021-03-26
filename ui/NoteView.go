@@ -2,10 +2,10 @@ package ui
 
 import (
 	"dominiclavery/goplin/logs"
-	"dominiclavery/goplin/models"
 	"fmt"
 	"github.com/MichaelMure/go-term-markdown"
 	"github.com/derailed/tview"
+	"io"
 	"io/ioutil"
 	"log"
 )
@@ -14,11 +14,11 @@ type NoteView struct {
 	*tview.TextView
 }
 
-func (nv *NoteView) SetNote(note models.Note) {
+func (nv *NoteView) SetNote(note io.Reader) {
 	nv.Clear()
 	var buf []byte
 	var err error
-	if buf, err = ioutil.ReadAll(note.Body); err != nil {
+	if buf, err = ioutil.ReadAll(note); err != nil {
 		buf = []byte("Something went wrong, that file couldn't be opened")
 		log.Println("Couldn't read a note", err)
 	}
@@ -29,13 +29,16 @@ func (nv *NoteView) SetNote(note models.Note) {
 		logs.TeeLog("Error displaying the note", err)
 	}
 	nv.ScrollToBeginning()
+	if v, ok := note.(io.Closer); ok {
+		_ = v.Close()
+	}
 }
 
 func MakeNoteView() *NoteView {
-	noteView := NoteView{TextView: tview.NewTextView().
+	nv := NoteView{TextView: tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true),
 	}
-	noteView.SetBorder(true).SetTitle("Note")
-	return &noteView
+	nv.SetBorder(true).SetTitle("Note")
+	return &nv
 }
