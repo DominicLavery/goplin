@@ -42,6 +42,7 @@ func MakeCmdLine() *CmdLine {
 	cmdLine.rootCmd.SetErr(logs.ConsoleView)
 
 	mkbookCommand := commands.NewMakeBookCommand(func() {
+		notebookTree.expandCurrentNode()
 		UpdateUI()
 	})
 	cmdLine.rootCmd.AddCommand(mkbookCommand)

@@ -14,8 +14,7 @@ func main() {
 	}
 
 	data.RegisterSource("Local", data.NewFilesystemSource(path))
-	//data.RegisterSource("inMem", data.NewInMemorySource())
-
+	data.RegisterSource("inMem", data.NewInMemorySource())
 	app := ui.MakeApp()
 	if err := app.Run(); err != nil {
 		panic(err)

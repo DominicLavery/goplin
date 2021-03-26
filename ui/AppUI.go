@@ -85,7 +85,7 @@ func MakeApp() *tview.Application {
 			renderFlex()
 			return nil
 		}
-		if event.Rune() == 'c' {
+		if event.Rune() == 'c' && !cmdMode {
 			displayConsole = !displayConsole
 			renderFlex()
 			return nil
@@ -99,6 +99,5 @@ func MakeApp() *tview.Application {
 
 func UpdateUI() {
 	tree := data.GetBooks()
-	local := tree["Local"] //TODO
-	notebookTree.SetNotebook(local.NotebookRoot)
+	notebookTree.SetDataTree(tree)
 }

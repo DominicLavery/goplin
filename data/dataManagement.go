@@ -9,6 +9,7 @@ import (
 var sources = make(map[string]Source)
 var notebookTree = make(map[string]SourceDataTree)
 var notebooks = make(map[uuid.UUID]*Notebook)
+var bookToSource = make(map[uuid.UUID]string)
 var notes = make(map[uuid.UUID]*Note)
 var openBook uuid.UUID
 var m sync.Mutex
@@ -27,19 +28,24 @@ func setRoot(sourceName string, root *Notebook) {
 		sourceName:   sourceName,
 		NotebookRoot: root,
 	}
-	addNotebook(root)
+	addNotebook(sourceName, root)
 }
 
-func addNotebook(book *Notebook) {
+func addNotebook(sourceName string, book *Notebook) {
 	book.Id = uuid.New()
+	bookToSource[book.Id] = sourceName
 	notebooks[book.Id] = book
 	for _, note := range book.Notes {
-		note.Id = uuid.New()
-		notes[note.Id] = note
+		addNote(note)
 	}
 	for _, child := range book.Children {
-		addNotebook(child)
+		addNotebook(sourceName, child)
 	}
+}
+
+func addNote(note *Note) {
+	note.Id = uuid.New()
+	notes[note.Id] = note
 }
 
 func GetBooks() map[string]SourceDataTree {
@@ -58,29 +64,31 @@ func GetBook(id uuid.UUID) *Notebook {
 func GetNote(id uuid.UUID) io.Reader {
 	m.Lock()
 	defer m.Unlock()
-	return sources["Local"].openNote(notes[id].Path) //TODO
+	parent := notebooks[openBook]
+	source := bookToSource[parent.Id]
+	return sources[source].openNote(notes[id].Path)
 }
 
 func MakeBook(name string) error {
 	parent := notebooks[openBook]
-	book, err := sources["Local"].makeBook(parent.Path + "/" + name) // TODO
+	source := bookToSource[parent.Id]
+	book, err := sources[source].makeBook(parent.Path + "/" + name)
 	if err != nil {
 		return err
 	}
-	book.Id = uuid.New()
+	addNotebook(source, book)
 	parent.Children = append(parent.Children, book)
-	notebooks[book.Id] = book
 	return nil
 }
 
 func MakeNote(name string) error {
 	parent := notebooks[openBook]
-	note, err := sources["Local"].makeNote(parent.Path + "/" + name) //TODO
+	source := bookToSource[parent.Id]
+	note, err := sources[source].makeNote(parent.Path + "/" + name)
 	if err != nil {
 		return err
 	}
-	note.Id = uuid.New()
+	addNote(note)
 	parent.Notes = append(parent.Notes, note)
-	notes[note.Id] = note
 	return nil
 }

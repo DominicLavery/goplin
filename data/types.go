@@ -27,9 +27,7 @@ type Notebook struct {
 }
 
 type Note struct {
-	Id         uuid.UUID
-	NotebookId int
-	Name       string
-	Path       string
-	Body       io.Reader
+	Id   uuid.UUID
+	Name string
+	Path string
 }

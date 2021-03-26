@@ -20,6 +20,7 @@ func NewFilesystemSource(root string) *FilesystemSource {
 	fs := afero.NewBasePathFs(afero.NewOsFs(), root)
 	return newFilesystemSource("/", fs)
 }
+
 func NewInMemorySource() *FilesystemSource {
 	fs := afero.NewMemMapFs()
 	return newFilesystemSource("/", fs)
@@ -49,11 +50,11 @@ func (b *FilesystemSource) openBooks() Notebook {
 			b.books[path] = &root
 			return nil
 		}
-		
+
 		if info.IsDir() && info.Name()[0:1] == "." {
 			return filepath.SkipDir
 		}
-		 if info.IsDir() {
+		if info.IsDir() {
 			parent := b.books[filepath.Dir(path)]
 			notebook := &Notebook{Name: info.Name(), Path: path}
 			parent.Children = append(parent.Children, notebook)
@@ -99,7 +100,7 @@ func (b *FilesystemSource) makeNote(path string) (*Note, error) {
 	if err != nil {
 		return nil, err
 	}
-	note := &Note{Name: filepath.Base(path),  Path: fullPath}
+	note := &Note{Name: filepath.Base(path), Path: fullPath}
 	b.notes[fullPath] = note
 	return note, nil
 }
