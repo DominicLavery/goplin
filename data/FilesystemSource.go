@@ -104,3 +104,11 @@ func (b *FilesystemSource) makeNote(path string) (*Note, error) {
 	b.notes[fullPath] = note
 	return note, nil
 }
+
+func (b *FilesystemSource) deleteBook(book *Notebook) error {
+	if err := b.fs.Remove(book.Path); err != nil {
+		return err
+	}
+	delete(b.books, book.Path)
+	return nil
+}

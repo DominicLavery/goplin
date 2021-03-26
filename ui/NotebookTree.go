@@ -82,8 +82,10 @@ func (nt *NotebookTree) SetDataTree(tree map[string]data.SourceDataTree) {
 	root.SetChildren(roots)
 	if nt.GetRoot() != nil {
 		currentId = nt.GetCurrentNode().GetReference().(uuid.UUID)
-		currentNode = getNodeById(root, currentId)
-	} else if roots != nil {
+		currentNode = findNode(root, currentId)
+	}
+
+	if currentNode == nil && roots != nil {
 		currentId = roots[0].GetReference().(uuid.UUID)
 		currentNode = roots[0]
 	}

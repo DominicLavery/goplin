@@ -10,6 +10,7 @@ type Source interface {
 	openNote(path string) io.Reader
 	makeBook(path string) (*Notebook, error)
 	makeNote(path string) (*Note, error)
+	deleteBook(book *Notebook) error
 }
 
 type SourceDataTree struct {
@@ -20,6 +21,7 @@ type SourceDataTree struct {
 
 type Notebook struct {
 	Id       uuid.UUID
+	PId       uuid.UUID
 	Name     string
 	Path     string
 	Children []*Notebook

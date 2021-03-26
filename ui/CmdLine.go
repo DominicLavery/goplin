@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"dominiclavery/goplin/commands"
 	"dominiclavery/goplin/logs"
 	"encoding/csv"
 	"github.com/derailed/tview"
@@ -41,15 +40,19 @@ func MakeCmdLine() *CmdLine {
 	cmdLine.rootCmd.SetOut(logs.ConsoleView)
 	cmdLine.rootCmd.SetErr(logs.ConsoleView)
 
-	mkbookCommand := commands.NewMakeBookCommand(func() {
+	mkbookCommand := NewMakeBookCommand(func() {
 		notebookTree.expandCurrentNode()
 		UpdateUI()
 	})
 	cmdLine.rootCmd.AddCommand(mkbookCommand)
-	mknoteCommand := commands.NewMakeNoteCommand(func() {
+	mknoteCommand := NewMakeNoteCommand(func() {
 		UpdateUI()
 	})
 	cmdLine.rootCmd.AddCommand(mknoteCommand)
+	deleteBookCommand := NewDeleteBookCommand(func() {
+		UpdateUI()
+	})
+	cmdLine.rootCmd.AddCommand(deleteBookCommand)
 	cmdLine.InputField.SetFinishedFunc(func(key tcell.Key) { cmdLine.finishedFunc(key) })
 	return &cmdLine
 }

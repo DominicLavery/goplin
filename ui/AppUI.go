@@ -5,6 +5,7 @@ import (
 	"dominiclavery/goplin/logs"
 	"github.com/derailed/tview"
 	"github.com/gdamore/tcell"
+	"github.com/google/uuid"
 )
 
 // Enum for screens & focus
@@ -100,4 +101,8 @@ func MakeApp() *tview.Application {
 func UpdateUI() {
 	tree := data.GetBooks()
 	notebookTree.SetDataTree(tree)
+}
+
+func CurrentSelectedBook() uuid.UUID {
+	return notebookTree.GetCurrentNode().GetReference().(uuid.UUID)
 }
